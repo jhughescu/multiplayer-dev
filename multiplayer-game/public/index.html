@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master</title>
+</head>
+
+<body>
+    <h1>Master</h1>
+    <p>This is the master client, it listens for servant connections</p>
+    <p>Waiting for servants...</p>
+    <p id='message'></p>
+
+    <div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        socket.emit('init', 'master');
+        socket.on('message', (msg) => {
+            message(msg);
+        });
+        socket.on('onServantConnect', (msg) => {
+            onServantConnect(msg);
+        });
+        const message = (msg) => {
+            console.log(msg);
+            document.getElementById('message').innerHTML += `<p>${msg}</p>`;
+        };
+        const onServantConnect = (msg) => {
+            console.log(msg);
+            document.getElementById('message').innerHTML += `<p>servant ${msg} has connected</p>`;
+        };
+    </script>
+</body>
+
+</html>

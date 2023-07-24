@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servant</title>
+</head>
+
+<body>
+    <h1>Servant</h1>
+    <p>This is the servant client, it requires a master before it can init</p>
+    <p id='message'></p>
+
+    <div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const message = (msg) => {
+            console.log(msg);
+            document.getElementById('message').innerHTML += `<p>${msg}</p>`;
+        };
+        const generateID = () => {
+            return 'player-' + Math.round(Math.random() * 1000);
+        }
+        const getID = () => {
+            let id = localStorage.getItem('playerID');
+            if (!id) {
+                id = generateID();
+                localStorage.setItem('playerID', id);
+            }
+            return id;
+        }
+        socket.emit('init', 'servant');
+        socket.on('connect', () => {
+            socket.emit('addNewServant', getID());
+        })
+        socket.on('message', (msg) => {
+            message(msg);
+        });
+
+    </script>
+</body>
+
+</html>
