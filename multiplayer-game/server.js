@@ -8,6 +8,7 @@ const server = http.createServer(app);
 const io = socketIO(server);
 
 let master = null;
+//const servants = {};
 const servants = new Map();
 
 io.on('connection', (socket) => {
@@ -30,7 +31,11 @@ io.on('connection', (socket) => {
         }
     });
     socket.on('addNewServant', (id) => {
+//        console.log('addNewServant', id);
+//        servants[id] = {id: id};
         servants.set(id, socket);
+        console.log(servants);
+        io.emit('newServant', servants.size);
     });
 });
 io.on('onServantConnect', (socket) => {

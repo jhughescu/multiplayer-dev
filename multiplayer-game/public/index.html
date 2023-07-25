@@ -26,6 +26,9 @@
         socket.on('onServantConnect', (msg) => {
             onServantConnect(msg);
         });
+        socket.on('newServant', (servants) => {
+            newServant(servants);
+        });
         const message = (msg) => {
             console.log(msg);
             document.getElementById('message').innerHTML += `<p>${msg}</p>`;
@@ -34,6 +37,10 @@
             console.log(msg);
             document.getElementById('message').innerHTML += `<p>servant ${msg} has connected</p>`;
         };
+        const newServant = (servants) => {
+            console.log('new servant');
+            console.log(servants);
+        }
     </script>
 </body>
 
