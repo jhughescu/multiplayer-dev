@@ -8,13 +8,10 @@ const server = http.createServer(app);
 const io = socketIO(server);
 
 let master = null;
-//const servants = {};
 const servants = new Map();
 let int = null;
 const waitForMaster = () => {
-//    console.log(`waiting for master...`);
     if (master !== null) {
-        console.log(`\rmaster found: ${master}`);
         clearInterval(masterTimer);
         clearInterval(int);
     }
@@ -29,25 +26,27 @@ var masterTimer = (function () {
     }, 250);
 })();
 io.on('connection', (socket) => {
-    socket.on('init', (type) => {
-        if (type === 'master') {
-            master = socket.id;
-            socket.emit();
-        }
+    socket.on('methodReady', (id) => {
+        console.log(`methodReady: ${id}`)
     });
-    socket.on('addNewServant', (id) => {
-        if (int === null) {
-//            int = setInterval(waitForMaster, 1000);
-        }
+    socket.on('nowIAmTheMaster', () => {
+        master = socket.id;
+        io.emit('masterConnected', master);
+    });
+    socket.on('addNewServant', (id, callback) => {
         servants.set(id, socket);
         if (master === null) {
-//            socket.emit('message', 'waiting for master');
+            //
         } else {
-//            socket.emit('message', `the master is ${master}`);
             io.emit('newServant', id);
         }
+        if (callback) {
+            if (typeof(callback) === 'function') {
+                callback({master: master})
+            }
+        }
     });
-    socket.on('disconnect', () => {
+    const removal = () => {
         // Remove the player ID from the 'players' map upon disconnection
         for (const [servantId, servantSocket] of servants.entries()) {
             if (servantSocket === socket) {
@@ -55,6 +54,13 @@ io.on('connection', (socket) => {
                 break;
             }
         }
+        socket.emit('getServants');
+    }
+    socket.on('remove', () => {
+        removal();
+    });
+    socket.on('disconnect', () => {
+        removal();
     });
     socket.on('getServants', () => {
         // Send the list of player IDs to the requesting client
@@ -62,13 +68,15 @@ io.on('connection', (socket) => {
         socket.emit('onGetServants', servantIds);
     });
     socket.on('playerPing', (id) => {
-        console.log('ping player ' + id);
         const targ = servants.get(id);
         if (targ) {
             targ.emit('ping');
-            console.log('ok to ping');
-        } else {
-            console.log('cannot ping');
+        }
+    });
+    socket.on('playerReset', (id) => {
+        const targ = servants.get(id);
+        if (targ) {
+            targ.emit('reset');
         }
     });
 });

@@ -4,8 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Servant</title>
+    <title>player</title>
     <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
+    <link rel='stylesheet' href='css/servant.css'>
 </head>
 
 <body>
@@ -17,25 +20,18 @@
 
     <div>
     </div>
-
-    <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const setStatus = (m, w) => {
             let s = $('#status');
+            let d = 300;
+            s.text(m);
             if (w) {
-                s.text(m).animate({opacity: 0.5}, 1000, function() {
-                    s.animate({opacity: 1}, 1000, function() {
-                        setStatus(m, w);
-                    });
-                });
+                s.addClass('animate-flicker');
+            } else {
+                s.removeClass('animate-flicker');
             }
-//            s.html(`${m}`);
         }
-        const message = (msg) => {
-            console.log(msg);
-            document.getElementById('message').innerHTML += `<p>${msg}</p>`;
-        };
         const generateID = () => {
             return 'player-' + Math.round(Math.random() * 1000);
         }
@@ -49,20 +45,36 @@
         }
         const resetServant = () => {
             localStorage.removeItem('playerID');
+            socket.emit('remove');
+            newServant();
         };
+        const newServant = () => {
+            let id = getID();
+            document.title = id;
+            $('h2').html(`id: ${id}`);
+            socket.emit('addNewServant', id, (response) => {
+                if (response.master === null) {
+                    setStatus('waiting for master', true);
+                } else {
+                    setStatus(`master is ${response.master}`, false);
+                }
+            });
+        }
         socket.emit('init', 'servant');
         socket.on('connect', () => {
-            let id = getID();
-            $('h2').html(`id: ${id}`);
-            socket.emit('addNewServant', id);
-            setStatus('waiting for master', true);
+            newServant()
         });
-        socket.on('message', (msg) => {
-            message(msg);
+        socket.on('masterConnected', (m) => {
+            setStatus(`master connected: ${m}`, false);
         });
         socket.on('ping', () => {
             let d = 200;
             $('h1').fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d);
+        });
+        socket.on('reset', () => {
+//            let d = 100;
+//            $('h1').fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d);
+            resetServant();
         });
 
     </script>
