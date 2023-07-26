@@ -10,32 +10,66 @@ const io = socketIO(server);
 let master = null;
 //const servants = {};
 const servants = new Map();
-
+let int = null;
+const waitForMaster = () => {
+//    console.log(`waiting for master...`);
+    if (master !== null) {
+        console.log(`\rmaster found: ${master}`);
+        clearInterval(masterTimer);
+        clearInterval(int);
+    }
+}
+int = setInterval(waitForMaster, 500);
+var masterTimer = (function () {
+    var P = ["\\", "|", "/", "-"];
+    var x = 0;
+    return setInterval(function () {
+        process.stdout.write("\rwaiting for master " + P[x++]);
+        x &= 3;
+    }, 250);
+})();
 io.on('connection', (socket) => {
-    console.log('New player connected:', socket.id);
     socket.on('init', (type) => {
-        console.log(`init type ${type}`);
-//        socket.emit('onServantConnect', socket.id);
         if (type === 'master') {
             master = socket.id;
-        }
-        if (type === 'servant') {
-            if (master === null) {
-                console.log(`cannot connect servant, no master assigned`);
-                socket.emit('message', 'cannot connect servant, no master assigned');
-            } else {
-                socket.emit('message', `the master is ${master}`);
-                socket.emit('message', `I am ${socket.id}`);
-                io.emit('onServantConnect', socket.id);
-            }
+            socket.emit();
         }
     });
     socket.on('addNewServant', (id) => {
-//        console.log('addNewServant', id);
-//        servants[id] = {id: id};
+        if (int === null) {
+//            int = setInterval(waitForMaster, 1000);
+        }
         servants.set(id, socket);
-        console.log(servants);
-        io.emit('newServant', servants.size);
+        if (master === null) {
+//            socket.emit('message', 'waiting for master');
+        } else {
+//            socket.emit('message', `the master is ${master}`);
+            io.emit('newServant', id);
+        }
+    });
+    socket.on('disconnect', () => {
+        // Remove the player ID from the 'players' map upon disconnection
+        for (const [servantId, servantSocket] of servants.entries()) {
+            if (servantSocket === socket) {
+                servants.delete(servantId);
+                break;
+            }
+        }
+    });
+    socket.on('getServants', () => {
+        // Send the list of player IDs to the requesting client
+        const servantIds = Array.from(servants.keys());
+        socket.emit('onGetServants', servantIds);
+    });
+    socket.on('playerPing', (id) => {
+        console.log('ping player ' + id);
+        const targ = servants.get(id);
+        if (targ) {
+            targ.emit('ping');
+            console.log('ok to ping');
+        } else {
+            console.log('cannot ping');
+        }
     });
 });
 io.on('onServantConnect', (socket) => {
@@ -47,10 +81,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // All other routes will serve the 'index.html' file
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const port = 3000;
 server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Server is running on http://localhost:${port}`);
 });
