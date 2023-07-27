@@ -47,6 +47,7 @@ io.on('connection', (socket) => {
         }
     });
     const removal = () => {
+        console.log('removal');
         // Remove the player ID from the 'players' map upon disconnection
         for (const [servantId, servantSocket] of servants.entries()) {
             if (servantSocket === socket) {
@@ -54,19 +55,27 @@ io.on('connection', (socket) => {
                 break;
             }
         }
+<<<<<<< HEAD
         const servantIds = Array.from(servants.keys());
         console.log('emitting getServants');
         io.emit('getServants');
         io.emit('updateServants', servantIds);
+=======
+        console.log(`call getServants`);
+        socket.emit('getServants');
+        console.log(`called getServants`);
+>>>>>>> origin/main
     }
     socket.on('remove', () => {
         removal();
     });
     socket.on('disconnect', () => {
+        console.log('disconnect');
         removal();
     });
     socket.on('getServants', () => {
         // Send the list of player IDs to the requesting client
+        console.log('get em');
         const servantIds = Array.from(servants.keys());
         console.log('emitting onGetServants');
         io.emit('onGetServants', servantIds);
