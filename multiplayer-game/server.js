@@ -54,7 +54,10 @@ io.on('connection', (socket) => {
                 break;
             }
         }
-        socket.emit('getServants');
+        const servantIds = Array.from(servants.keys());
+        console.log('emitting getServants');
+        io.emit('getServants');
+        io.emit('updateServants', servantIds);
     }
     socket.on('remove', () => {
         removal();
@@ -65,7 +68,8 @@ io.on('connection', (socket) => {
     socket.on('getServants', () => {
         // Send the list of player IDs to the requesting client
         const servantIds = Array.from(servants.keys());
-        socket.emit('onGetServants', servantIds);
+        console.log('emitting onGetServants');
+        io.emit('onGetServants', servantIds);
     });
     socket.on('playerPing', (id) => {
         const targ = servants.get(id);

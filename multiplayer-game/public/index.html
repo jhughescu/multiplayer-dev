@@ -32,7 +32,12 @@
             onServantConnect(msg);
         });
         socket.on('onGetServants', (msg) => {
+            console.log('I hear onGetServants')
             onGetServants(msg);
+        });
+        socket.on('updateServants', (arr) => {
+            console.log('I hear updateServants')
+            onGetServants(arr);
         });
         socket.on('newServant', (servants) => {
             newServant(servants);
