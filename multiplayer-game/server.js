@@ -8,7 +8,7 @@ const server = http.createServer(app);
 const io = socketIO(server);
 
 
-const servants = new Map();
+const players = new Map();
 let master = null;
 let int = null;
 const waitForMaster = () => {
@@ -42,23 +42,21 @@ class Player {
     }
 }
 io.on('connection', (socket) => {
-    socket.on('methodReady', (id) => {
-        console.log(`methodReady: ${id}`)
-    });
     socket.on('nowIAmTheMaster', () => {
         master = socket.id;
         io.emit('masterConnected', master);
+        console.log('master');
     });
-    socket.on('addNewServant', (id, callback) => {
+    socket.on('addNewPlayer', (id, callback) => {
         const player = new Player(id);
         console.log(player)
-        //        servants.set(id, socket);
+        //        players.set(id, socket);
         player.socket = socket;
-        servants.set(id, player);
+        players.set(id, player);
         if (master === null) {
             //
         } else {
-            io.emit('newServant', id);
+            io.emit('newPlayer', id);
         }
         if (callback) {
             if (typeof (callback) === 'function') {
@@ -70,72 +68,45 @@ io.on('connection', (socket) => {
     });
     const removal = () => {
         // Remove the player ID from the 'players' map upon disconnection
-        for (const [servantId, servantSocket] of servants.entries()) {
-            if (servantSocket === socket) {
-                servants.delete(servantId);
+        for (const [playerId, playerSocket] of players.entries()) {
+            if (playerSocket === socket) {
+                players.delete(playerId);
                 break;
             }
         }
-        const servantIds = Array.from(servants.keys());
-        console.log('emitting getServants');
-        io.emit('getServants');
-        io.emit('updateServants', servantIds);
+        const playerIds = Array.from(players.keys());
+        console.log('emitting getPlayers');
+        io.emit('getPlayers');
+        io.emit('updatePlayers', playerIds);
     }
     socket.on('remove', () => {
         removal();
     });
     socket.on('disconnect', () => {
-        const player = servants.get(socket.id);
-        console.log(player)
+        const player = players.get(socket.id);
         if (player) {
             player.handleDisconnect();
         }
     });
-    socket.on('disconnectV2', () => {
-        for (const [servantId, servant] of servants.entries()) {
-            if (servant.socket === socket) {
-                //                servants.delete(servantId);
-                console.log('servant', servantId, 'disconnected.');
-                console.log(servants[servantId]);
-                //                console.log(servant.socket, socket);
-                //                servants[servantId].setActive(false);
-                console.log(servants[servantId]);
-                break;
-            }
-        }
-    });
-    socket.on('disconnectV1', () => {
-        const player = servants.get(socket.id);
-        if (player) {
-            player.setActive(false);
-            console.log(player);
-        } else {
-            console.log('player not found')
-        }
-        //        removal();
-    });
-    socket.on('getServants', () => {
+    socket.on('getPlayers', () => {
         // Send the list of player IDs to the requesting client
-        const servantIds = Array.from(servants.keys());
-        console.log('emitting onGetServants');
-        io.emit('onGetServants', servantIds);
+        const playerIds = Array.from(players.keys());
+        console.log('emitting onGetPlayers');
+        io.emit('onGetPlayers', playerIds);
     });
     socket.on('playerPing', (id) => {
-        const targ = servants.get(id).socket;
+        const targ = players.get(id).socket;
         if (targ) {
             targ.emit('ping');
         }
     });
     socket.on('playerReset', (id) => {
-        const targ = servants.get(id).socket;
+        const targ = players.get(id).socket;
         if (targ) {
             targ.emit('reset');
         }
     });
 });
-//io.on('onServantConnect', (socket) => {
-//    console.log('servant connects')
-//})
 
 // Serve the static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));

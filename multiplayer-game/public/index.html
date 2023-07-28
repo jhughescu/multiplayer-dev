@@ -12,7 +12,7 @@
 
 <body>
     <h1>Master</h1>
-    <p>This is the master client, it listens for servant connections</p>
+    <p>This is the master client, it listens for player connections</p>
     <p id='message'></p>
     <div id='players'></div>
 
@@ -28,19 +28,19 @@
         socket.on('connect', () => {
             socket.emit('nowIAmTheMaster');
         });
-        socket.on('onServantConnect', (msg) => {
-            onServantConnect(msg);
+        socket.on('onPlayerConnect', (msg) => {
+            onPlayerConnect(msg);
         });
-        socket.on('onGetServants', (msg) => {
-            console.log('I hear onGetServants')
-            onGetServants(msg);
+        socket.on('onGetPlayers', (msg) => {
+            console.log('I hear onGetPlayers')
+            onGetPlayers(msg);
         });
-        socket.on('updateServants', (arr) => {
-            console.log('I hear updateServants')
-            onGetServants(arr);
+        socket.on('updatePlayers', (arr) => {
+            console.log('I hear updatePlayers')
+            onGetPlayers(arr);
         });
-        socket.on('newServant', (servants) => {
-            newServant(servants);
+        socket.on('newPlayer', (players) => {
+            newPlayer(players);
         });
         const buttonSetup = () => {
             let b = document.getElementsByClassName('pingBtn');
@@ -65,10 +65,10 @@
         const clearPlayers = () => {
             document.getElementById('players').innerHTML = ``;
         };
-        const onServantConnect = (msg) => {
-            document.getElementById('message').innerHTML += `<p>servant ${msg} has connected</p>`;
+        const onPlayerConnect = (msg) => {
+            document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;
         };
-        const onGetServants = (arr) => {
+        const onGetPlayers = (arr) => {
             clearPlayers();
             document.getElementById('players').innerHTML = '<b>players:</b>';
             for (var i = 0; i < arr.length; i++) {
@@ -76,10 +76,10 @@
             }
             buttonSetup();
         };
-        const newServant = (id) => {
-            socket.emit('getServants');
+        const newPlayer = (id) => {
+            socket.emit('getPlayers');
         }
-        socket.emit('getServants')
+        socket.emit('getPlayers')
 
     </script>
 </body>
