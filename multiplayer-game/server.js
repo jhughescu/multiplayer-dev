@@ -7,15 +7,16 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-let master = null;
+
 const servants = new Map();
+let master = null;
 let int = null;
 const waitForMaster = () => {
     if (master !== null) {
         clearInterval(masterTimer);
         clearInterval(int);
     }
-}
+};
 int = setInterval(waitForMaster, 500);
 var masterTimer = (function () {
     var P = ["\\", "|", "/", "-"];
@@ -25,6 +26,21 @@ var masterTimer = (function () {
         x &= 3;
     }, 250);
 })();
+class Player {
+    constructor(id) {
+        this.id = id;
+        this.socket = null;
+        this.active = true;
+    }
+    setActive(boo) {
+        this.active = boo;
+    }
+    handleDisconnect() {
+        // Implement what you want to do when the player disconnects
+        // For example, update any game state, notify other players, etc.
+        console.log('Player', this.id, 'disconnected.');
+    }
+}
 io.on('connection', (socket) => {
     socket.on('methodReady', (id) => {
         console.log(`methodReady: ${id}`)
@@ -34,15 +50,21 @@ io.on('connection', (socket) => {
         io.emit('masterConnected', master);
     });
     socket.on('addNewServant', (id, callback) => {
-        servants.set(id, socket);
+        const player = new Player(id);
+        console.log(player)
+        //        servants.set(id, socket);
+        player.socket = socket;
+        servants.set(id, player);
         if (master === null) {
             //
         } else {
             io.emit('newServant', id);
         }
         if (callback) {
-            if (typeof(callback) === 'function') {
-                callback({master: master})
+            if (typeof (callback) === 'function') {
+                callback({
+                    master: master
+                })
             }
         }
     });
@@ -63,7 +85,34 @@ io.on('connection', (socket) => {
         removal();
     });
     socket.on('disconnect', () => {
-        removal();
+        const player = servants.get(socket.id);
+        console.log(player)
+        if (player) {
+            player.handleDisconnect();
+        }
+    });
+    socket.on('disconnectV2', () => {
+        for (const [servantId, servant] of servants.entries()) {
+            if (servant.socket === socket) {
+                //                servants.delete(servantId);
+                console.log('servant', servantId, 'disconnected.');
+                console.log(servants[servantId]);
+                //                console.log(servant.socket, socket);
+                //                servants[servantId].setActive(false);
+                console.log(servants[servantId]);
+                break;
+            }
+        }
+    });
+    socket.on('disconnectV1', () => {
+        const player = servants.get(socket.id);
+        if (player) {
+            player.setActive(false);
+            console.log(player);
+        } else {
+            console.log('player not found')
+        }
+        //        removal();
     });
     socket.on('getServants', () => {
         // Send the list of player IDs to the requesting client
@@ -72,21 +121,21 @@ io.on('connection', (socket) => {
         io.emit('onGetServants', servantIds);
     });
     socket.on('playerPing', (id) => {
-        const targ = servants.get(id);
+        const targ = servants.get(id).socket;
         if (targ) {
             targ.emit('ping');
         }
     });
     socket.on('playerReset', (id) => {
-        const targ = servants.get(id);
+        const targ = servants.get(id).socket;
         if (targ) {
             targ.emit('reset');
         }
     });
 });
-io.on('onServantConnect', (socket) => {
-    console.log('servant connects')
-})
+//io.on('onServantConnect', (socket) => {
+//    console.log('servant connects')
+//})
 
 // Serve the static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
