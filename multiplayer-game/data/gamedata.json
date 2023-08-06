@@ -1,0 +1,28 @@
+{
+    "stakeholders": {
+        "government": {
+            "id": 0,
+            "title": "Government"
+        },
+        "individual-change-maker": {
+            "id": 1,
+            "title": "Individual Change Maker"
+        },
+        "well-established-business": {
+            "id": 2,
+            "title": "Well-established Business"
+        },
+        "civil-society-organisation": {
+            "id": 3,
+            "title": "Civil Society Organisation"
+        },
+        "small-enterprise": {
+            "id": 4,
+            "title": "Small Enterprise"
+        },
+        "public-voices": {
+            "id": 5,
+            "title": "Public Voices"
+        }
+    }
+}

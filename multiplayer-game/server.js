@@ -7,10 +7,15 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
+const gamedata = require('./data/gamedata.json');
+console.log('gamedata');
+console.log(gamedata);
 
-const players = new Map();
+
+const servants = new Map();
 let master = null;
 let int = null;
+let isDev = true;
 const waitForMaster = () => {
     if (master !== null) {
         clearInterval(masterTimer);
@@ -42,21 +47,23 @@ class Player {
     }
 }
 io.on('connection', (socket) => {
+    socket.on('areWeDev', (cb) => {
+        cb(isDev);
+        return isDev;
+    });
+    socket.on('methodReady', (id) => {
+        console.log(`methodReady: ${id}`)
+    });
     socket.on('nowIAmTheMaster', () => {
         master = socket.id;
         io.emit('masterConnected', master);
-        console.log('master');
     });
-    socket.on('addNewPlayer', (id, callback) => {
+    socket.on('addNewServant', (id, callback) => {
         const player = new Player(id);
-        console.log(player)
-        //        players.set(id, socket);
         player.socket = socket;
-        players.set(id, player);
-        if (master === null) {
-            //
-        } else {
-            io.emit('newPlayer', id);
+        servants.set(id, player);
+        if (master !== null) {
+            io.emit('newServant', id);
         }
         if (callback) {
             if (typeof (callback) === 'function') {
@@ -67,41 +74,87 @@ io.on('connection', (socket) => {
         }
     });
     const removal = () => {
-        // Remove the player ID from the 'players' map upon disconnection
-        for (const [playerId, playerSocket] of players.entries()) {
-            if (playerSocket === socket) {
-                players.delete(playerId);
+        let disconnectedPlayer = null;
+        for (const [playerId, player] of servants.entries()) {
+            if (player.socket.id === socket.id) {
+                disconnectedPlayer = player;
                 break;
             }
         }
-        const playerIds = Array.from(players.keys());
-        console.log('emitting getPlayers');
-        io.emit('getPlayers');
-        io.emit('updatePlayers', playerIds);
-    }
+        if (disconnectedPlayer) {
+            servants.delete(disconnectedPlayer.id);
+            onPlayersUpdate();
+        }
+    };
+    const removalV1 = () => {
+        // Remove the player ID from the 'players' map upon disconnection
+        for (const [servantId, servantSocket] of servants.entries()) {
+            if (servantSocket === socket) {
+                servants.delete(servantId);
+                break;
+            }
+        }
+        const servantIds = Array.from(servants.keys());
+        console.log('emitting getServants');
+        io.emit('getServants');
+        io.emit('updateServants', servantIds);
+    };
+    const onPlayersUpdate = () => {
+        console.log('new onPLayersUpdate method');
+        const servantIds = Array.from(servants.keys());
+//        io.emit('onGetServantIDs', servantIds);
+        const theServants = Array.from(servants.values());
+        theServants.forEach((s, i) => {
+//            console.log(i, s.socket.connected);
+//            console.log(s);
+            theServants[i] = {id: s.id, active: s.socket.connected};
+        });
+        io.emit('onGetServants', theServants);
+    };
     socket.on('remove', () => {
         removal();
     });
     socket.on('disconnect', () => {
-        const player = players.get(socket.id);
+        // Find the player with the corresponding socket.id in the 'servants' map
+        let disconnectedPlayer = null;
+        for (const [playerId, player] of servants.entries()) {
+            if (player.socket.id === socket.id) {
+                disconnectedPlayer = player;
+                break;
+            }
+        }
+        if (disconnectedPlayer) {
+            // Perform any actions required for the disconnected player
+            disconnectedPlayer.handleDisconnect();
+            // Remove the player from the 'servants' map
+//            servants.delete(disconnectedPlayer.id);
+            onPlayersUpdate();
+        } else {
+            console.log('no player found');
+        }
+    });
+    socket.on('disconnectNOT', () => {
+        const player = servants.get(socket.id);
+//        console.log(`socket.id: ${socket.id}`);
+//        console.log(servants);
+        console.log(`disconnecting ${player}`)
         if (player) {
             player.handleDisconnect();
         }
     });
-    socket.on('getPlayers', () => {
+    socket.on('getServantIDs', () => {
         // Send the list of player IDs to the requesting client
-        const playerIds = Array.from(players.keys());
-        console.log('emitting onGetPlayers');
-        io.emit('onGetPlayers', playerIds);
+        onPlayersUpdate();
+
     });
     socket.on('playerPing', (id) => {
-        const targ = players.get(id).socket;
+        const targ = servants.get(id).socket;
         if (targ) {
             targ.emit('ping');
         }
     });
     socket.on('playerReset', (id) => {
-        const targ = players.get(id).socket;
+        const targ = servants.get(id).socket;
         if (targ) {
             targ.emit('reset');
         }

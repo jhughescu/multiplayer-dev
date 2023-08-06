@@ -8,11 +8,12 @@
     <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
         <script src="/socket.io/socket.io.js"></script>
 <!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
+    <link rel='stylesheet' href='css/master.css'>
 </head>
 
 <body>
     <h1>Master</h1>
-    <p>This is the master client, it listens for player connections</p>
+    <p>This is the master client, it listens for servant connections</p>
     <p id='message'></p>
     <div id='players'></div>
 
@@ -28,19 +29,23 @@
         socket.on('connect', () => {
             socket.emit('nowIAmTheMaster');
         });
-        socket.on('onPlayerConnect', (msg) => {
-            onPlayerConnect(msg);
+        socket.on('onServantConnect', (msg) => {
+            onServantConnect(msg);
         });
-        socket.on('onGetPlayers', (msg) => {
-            console.log('I hear onGetPlayers')
-            onGetPlayers(msg);
+        socket.on('onGetServants', (msg) => {
+            console.log('I hear onGetServants')
+            onGetServants(msg);
         });
-        socket.on('updatePlayers', (arr) => {
-            console.log('I hear updatePlayers')
-            onGetPlayers(arr);
+        socket.on('onGetServantIDs', (msg) => {
+            console.log('I hear onGetServantIDs')
+            onGetServantIDs(msg);
         });
-        socket.on('newPlayer', (players) => {
-            newPlayer(players);
+        socket.on('updateServants', (arr) => {
+            console.log('I hear updateServants')
+            onGetServantIDs(arr);
+        });
+        socket.on('newServant', (servants) => {
+            newServant(servants);
         });
         const buttonSetup = () => {
             let b = document.getElementsByClassName('pingBtn');
@@ -58,28 +63,52 @@
                 });
             });
         }
-        const playerPing = (p, i) => {
+        const playerDisplay = (p, i) => {
             var e = document.getElementById('players');
-            e.innerHTML += `<div>${p} <button class="pingBtn" id="${PINGBTN}${p}">Ping</button><button class="resetBtn" id="${RESETBTN}${p}">Reset</button></div>`;
+            var s = '';
+            s += `<div class='${p.active ? 'active' : 'inactive'}'>${p.id} <button class="pingBtn" id="${PINGBTN}${p.id}">Ping</button>`;
+            s += `<button class="resetBtn" id="${RESETBTN}${p.id}">Reset</button></div>`;
+            e.innerHTML += s;
         };
         const clearPlayers = () => {
             document.getElementById('players').innerHTML = ``;
         };
-        const onPlayerConnect = (msg) => {
-            document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;
+        const onServantConnect = (msg) => {
+            document.getElementById('message').innerHTML += `<p>servant ${msg} has connected</p>`;
         };
-        const onGetPlayers = (arr) => {
+        const onGetServantsNot = (arr) => {
+            console.log('onGetServants');
+            console.log(arr);
+        };
+        const onGetServants = (arr) => {
+            console.log('onGetServants');
+            console.log(arr);
             clearPlayers();
             document.getElementById('players').innerHTML = '<b>players:</b>';
             for (var i = 0; i < arr.length; i++) {
-                playerPing(arr[i], i);
+                playerDisplay(arr[i], i);
+//                console.log(servants);
+//                console.log(arr[i]);
             }
             buttonSetup();
         };
-        const newPlayer = (id) => {
-            socket.emit('getPlayers');
+        const onGetServantIDsOld = (arr) => {
+            console.log('onGetServantIDs');
+            console.log(arr);
+            clearPlayers();
+            document.getElementById('players').innerHTML = '<b>players:</b>';
+            for (var i = 0; i < arr.length; i++) {
+                playerDisplay(arr[i], i);
+//                console.log(servants);
+                console.log(arr[i]);
+            }
+            buttonSetup();
+        };
+        const newServant = (id) => {
+            socket.emit('getServantIDs');
         }
-        socket.emit('getPlayers')
+        socket.emit('getServantIDs');
+//        socket.emit('getServants');
 
     </script>
 </body>

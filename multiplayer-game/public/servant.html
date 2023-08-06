@@ -22,6 +22,8 @@
     </div>
     <script>
         const socket = io();
+        let isDev = false;
+        let storageID = null;
         const setStatus = (m, w) => {
             let s = $('#status');
             let d = 300;
@@ -31,25 +33,49 @@
             } else {
                 s.removeClass('animate-flicker');
             }
+        };
+        const getStorageID = () => {
+            return `player${getHash()}ID`
+        }
+        const getHash = () => {
+            let h = '';
+            if (window.location.hash  && isDev) {
+                if (window.location.hash.substr(0, 1) === '#') {
+                    h = window.location.hash.replace('#', '');
+                }
+            }
+            console.log(`hash is ${h}`);
+            return h;
         }
         const generateID = () => {
-            return 'player-' + Math.round(Math.random() * 1000);
+            let id = 'player-' + Math.round(Math.random() * 1000);
+            console.log(`socket.emit('testing')`);
+            console.log(socket.emit('testing'));
+            if (window.location.hash) {
+                if (window.location.hash.substr(0, 1) === '#') {
+                    id = id.replace('-', '-' + window.location.hash.replace('#', '') + '-');
+                }
+            }
+            return id;;
         }
         const getID = () => {
-            let id = localStorage.getItem('playerID');
+            let id = localStorage.getItem(getStorageID());
             if (!id) {
                 id = generateID();
-                localStorage.setItem('playerID', id);
+                localStorage.setItem(getStorageID(), id);
             }
             return id;
         }
         const resetServant = () => {
-            localStorage.removeItem('playerID');
+            localStorage.removeItem(getStorageID());
             socket.emit('remove');
             newServant();
         };
         const newServant = () => {
             let id = getID();
+
+
+            storageID = getStorageID();
             document.title = id;
             $('h2').html(`id: ${id}`);
             socket.emit('addNewServant', id, (response) => {
@@ -62,7 +88,12 @@
         }
         socket.emit('init', 'servant');
         socket.on('connect', () => {
-            newServant()
+            console.log('connect the socket');
+            socket.emit('areWeDev', (m) => {
+                isDev = m;
+                console.log(`isDev ${isDev}`);
+                newServant();
+            });
         });
         socket.on('masterConnected', (m) => {
             setStatus(`master connected: ${m}`, false);
