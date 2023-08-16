@@ -13,8 +13,9 @@
 
 <body>
     <h1>Master</h1>
-    <p>This is the master client, it listens for servant connections</p>
+    <p>This is the master client, it listens for player connections</p>
     <p id='message'></p>
+    <button id='startSession'>Start Session</button>
     <div id='players'></div>
 
     <div>
@@ -29,23 +30,23 @@
         socket.on('connect', () => {
             socket.emit('nowIAmTheMaster');
         });
-        socket.on('onServantConnect', (msg) => {
-            onServantConnect(msg);
+        socket.on('onPlayerConnect', (msg) => {
+            onPlayerConnect(msg);
         });
-        socket.on('onGetServants', (msg) => {
-            console.log('I hear onGetServants')
-            onGetServants(msg);
+        socket.on('onGetPlayers', (msg) => {
+            console.log('I hear onGetPlayers')
+            onGetPlayers(msg);
         });
-        socket.on('onGetServantIDs', (msg) => {
-            console.log('I hear onGetServantIDs')
-            onGetServantIDs(msg);
+        socket.on('onGetPlayerIDs', (msg) => {
+            console.log('I hear onGetPlayerIDs')
+            onGetPlayerIDs(msg);
         });
-        socket.on('updateServants', (arr) => {
-            console.log('I hear updateServants')
-            onGetServantIDs(arr);
+        socket.on('updatePlayers', (arr) => {
+            console.log('I hear updatePlayers')
+            onGetPlayerIDs(arr);
         });
-        socket.on('newServant', (servants) => {
-            newServant(servants);
+        socket.on('newPlayer', (players) => {
+            newPlayer(players);
         });
         const buttonSetup = () => {
             let b = document.getElementsByClassName('pingBtn');
@@ -63,6 +64,10 @@
                 });
             });
         }
+        let sb = document.getElementById('startSession');
+        sb.addEventListener('click', (evt) => {
+            socket.emit('startNewSession');
+        });
         const playerDisplay = (p, i) => {
             var e = document.getElementById('players');
             var s = '';
@@ -73,42 +78,42 @@
         const clearPlayers = () => {
             document.getElementById('players').innerHTML = ``;
         };
-        const onServantConnect = (msg) => {
-            document.getElementById('message').innerHTML += `<p>servant ${msg} has connected</p>`;
+        const onPlayerConnect = (msg) => {
+            document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;
         };
-        const onGetServantsNot = (arr) => {
-            console.log('onGetServants');
+        const onGetPlayersNot = (arr) => {
+            console.log('onGetPlayers');
             console.log(arr);
         };
-        const onGetServants = (arr) => {
-            console.log('onGetServants');
+        const onGetPlayers = (arr) => {
+            console.log('onGetPlayers');
             console.log(arr);
             clearPlayers();
             document.getElementById('players').innerHTML = '<b>players:</b>';
             for (var i = 0; i < arr.length; i++) {
                 playerDisplay(arr[i], i);
-//                console.log(servants);
+//                console.log(players);
 //                console.log(arr[i]);
             }
             buttonSetup();
         };
-        const onGetServantIDsOld = (arr) => {
-            console.log('onGetServantIDs');
+        const onGetPlayerIDsOld = (arr) => {
+            console.log('onGetPlayerIDs');
             console.log(arr);
             clearPlayers();
             document.getElementById('players').innerHTML = '<b>players:</b>';
             for (var i = 0; i < arr.length; i++) {
                 playerDisplay(arr[i], i);
-//                console.log(servants);
+//                console.log(players);
                 console.log(arr[i]);
             }
             buttonSetup();
         };
-        const newServant = (id) => {
-            socket.emit('getServantIDs');
+        const newPlayer = (id) => {
+            socket.emit('getPlayerIDs');
         }
-        socket.emit('getServantIDs');
-//        socket.emit('getServants');
+        socket.emit('getPlayerIDs');
+//        socket.emit('getPlayers');
 
     </script>
 </body>

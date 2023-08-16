@@ -20,9 +20,22 @@
             "id": 4,
             "title": "Small Enterprise"
         },
-        "public-voices": {
+        "public-voices-1": {
             "id": 5,
-            "title": "Public Voices"
+            "title": "Public Voices",
+            "active": -1,
+            "likes": true
+        },
+        "public-voices-2": {
+            "id": 5,
+            "title": "Public Voices",
+            "active": -1,
+            "likes": true
         }
+    },
+    "defaults": {
+        "active": 1,
+        "votes": 10,
+        "likes": false
     }
 }
