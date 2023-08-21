@@ -16,6 +16,7 @@
     <p>This is the master client, it listens for player connections</p>
     <p id='message'></p>
     <button id='startSession'>Start Session</button>
+    <button id='endSession'>End Session</button>
     <div id='players'></div>
 
     <div>
@@ -34,15 +35,15 @@
             onPlayerConnect(msg);
         });
         socket.on('onGetPlayers', (msg) => {
-            console.log('I hear onGetPlayers')
+//            console.log('I hear onGetPlayers')
             onGetPlayers(msg);
         });
         socket.on('onGetPlayerIDs', (msg) => {
-            console.log('I hear onGetPlayerIDs')
+//            console.log('I hear onGetPlayerIDs')
             onGetPlayerIDs(msg);
         });
         socket.on('updatePlayers', (arr) => {
-            console.log('I hear updatePlayers')
+//            console.log('I hear updatePlayers')
             onGetPlayerIDs(arr);
         });
         socket.on('newPlayer', (players) => {
@@ -63,10 +64,17 @@
                     socket.emit('playerReset', id);
                 });
             });
-        }
-        let sb = document.getElementById('startSession');
-        sb.addEventListener('click', (evt) => {
-            socket.emit('startNewSession');
+        };
+        let ssb = document.getElementById('startSession');
+        ssb.addEventListener('click', (evt) => {
+            console.log('cow');
+            socket.emit('startNewSession', function (s) {
+                console.log('mooooooooooooooooooooo');
+            });
+        });
+        let esb = document.getElementById('endSession');
+        esb.addEventListener('click', (evt) => {
+            socket.emit('endSession');
         });
         const playerDisplay = (p, i) => {
             var e = document.getElementById('players');
@@ -81,13 +89,9 @@
         const onPlayerConnect = (msg) => {
             document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;
         };
-        const onGetPlayersNot = (arr) => {
-            console.log('onGetPlayers');
-            console.log(arr);
-        };
         const onGetPlayers = (arr) => {
-            console.log('onGetPlayers');
-            console.log(arr);
+//            console.log('onGetPlayers');
+//            console.log(arr);
             clearPlayers();
             document.getElementById('players').innerHTML = '<b>players:</b>';
             for (var i = 0; i < arr.length; i++) {

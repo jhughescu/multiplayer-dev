@@ -1,0 +1,16 @@
+* {
+    font-family: monospace;
+    background-color: #292828;
+    color: white;
+}
+.header {
+/*    text-transform: capitalize;*/
+    font-size: 1.5em;
+}
+.novotes {
+    color: #d15f5f;
+}
+.highlight {
+    color: yellow;
+    font-weight: bold;
+}

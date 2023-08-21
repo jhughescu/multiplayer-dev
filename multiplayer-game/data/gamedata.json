@@ -22,13 +22,13 @@
         },
         "public-voices-1": {
             "id": 5,
-            "title": "Public Voices",
+            "title": "Public Voices 1",
             "active": -1,
             "likes": true
         },
         "public-voices-2": {
             "id": 5,
-            "title": "Public Voices",
+            "title": "Public Voices 2",
             "active": -1,
             "likes": true
         }

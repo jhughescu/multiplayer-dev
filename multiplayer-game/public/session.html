@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session detail</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+        <script src="/socket.io/socket.io.js"></script>
+<!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
+    <link rel='stylesheet' href='css/session.css'>
+</head>
+
+<body>
+    <h1>Session</h1>
+    <p>This is the session summary</p>
+    <div id='message'></div>
+    <div>
+    </div>
+
+
+    <script>
+        const socket = io();
+        let session = null;
+        const updateSession = (sesh) => {
+//            console.log('go go go ');
+            session = sesh;
+            renderSession();
+        }
+        const renderSession = () => {
+            showStakeholders(session.stakeholders);
+        }
+        const showStakeholders = (s) => {
+            let m = $('#message');
+            m.html('');
+            let str = '<ul>';
+            let novote = '';
+            let active = null;
+            Object.entries(s).forEach(([k, v]) => {
+                novote = v.votes > 0 ? '' : 'novotes';
+                str +=`<li>`;
+                str +=`<span class='header'>${k}</span>`;
+                str += `<ul>`;
+//                str += `<li>active player: <span class='highlight'>${v.active[0]}</span></li>`;
+                str += `<li>team:</li>`;
+                str += `<ol>`;
+                for (var i = 0; i < v.team.length; i++) {
+                    active = v.team[i] === v.active[0];
+                    str += `<li><span class='${active ? 'highlight' : ''}'>${v.team[i]}</span></li>`;
+                }
+                str += `</ol>`;
+                str += `<li class="${novote}">votes remaining: ${v.votes}</li>`;
+                str += `<li>votes received: ${v.voteObj.total}</li>`;
+                str += `</ul>`;
+                str +=`</li>`;
+            });
+            str += '</ul>';
+            m.append(str);
+//            console.log('done again');
+        };
+        socket.on('connect', function (){
+           socket.emit('getSession', function (s) {
+//               console.log(`cool, I have the sesison:`);
+               updateSession(s);
+           });
+        });
+        socket.on('onNewSession', (sesh) => {
+           updateSession(sesh);
+        });
+    </script>
+    </body>
+</html>

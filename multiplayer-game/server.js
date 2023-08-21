@@ -23,6 +23,8 @@ const players = new Map();
 let master = null;
 let int = null;
 let isDev = true;
+let sessionActive = false;
+let session = null;
 
 //routes:
 app.get('/download-csv', (req, res) => {
@@ -58,13 +60,9 @@ const waitForMaster = () => {
         clearInterval(int);
     }
 };
-const allocateTeams = () => {
-
-};
 class Session {
     constructor(id) {
         this.id = id;
-//        this.data = Object.assign({}, gamedata);
     }
 }
 class Stakeholder {
@@ -75,6 +73,10 @@ class Stakeholder {
 //        this.active = s.hasOwnProperty('active') ? s.active : d.active;
 //        this.votes = d.votes;
         this.team = [];
+        this.voteObj = {
+            total: 0,
+            detail: {}
+        };
         for (var i in s) {
             this[i] = s[i];
         }
@@ -85,21 +87,80 @@ const setupStakeholders = () => {
     let defs = gamedata.defaults;
     let sh = gamedata.stakeholders;
     for (var i in sh) {
-//        sh[i] = new Stakeholder(i, sh[i], defs);
         for (var j in defs) {
-//            console.log(j, defs[j]);
             if (!sh[i].hasOwnProperty(j)) {
-//                console.log(`${j} already exists`);
                 sh[i][j] = defs[j];
             }
 
         }
-//        console.log(sh[i]);
         sh[i] = new Stakeholder(i, sh[i], defs);
     }
     return sh;
 };
-const startNewSession = () => {
+const setSessionActive = (boo) => {
+//    console.log(`setSessionActive ${boo}`);
+    sessionActive = boo;
+};
+const getShortPlayerID = (i) => {
+    return i.replace('player-', '');
+};
+const getFullPlayerID = (i) => {
+    let id = i;
+    if (i.indexOf('player-') > -1) {
+        id = 'player-' + i;
+    }
+    return id;
+};
+const startNewMiniSession = (cb) => {
+    let i = 0;
+    let a = [];
+    let sesh = new Session(12345);
+    sesh.stakeholders = setupStakeholders();
+    sesh.playersMap = new Map();
+    sesh.players = {};
+    // copy the list of players and thoroughly randomise it:
+    for (let [k, v] of players) {
+        sesh.players[k] = Object.assign({}, v);
+        delete sesh.players[k].socket;
+        a.push(getShortPlayerID(k));
+    };
+    fs.writeFile('../logs/sessionmini1.json', JSON.stringify(sesh.players), () => {
+        console.log('dunne');
+    });
+    for (i = 0; i < 10; i++) {
+        a.sort(() => {return Math.round(Math.random() * 2) - 1})
+    };
+    // Loop through the stakeholders adding users from the list until no more remain:
+    while (a.length > 0) {
+        for (i in sesh.stakeholders) {
+            if (a.length > 0) {
+                var p = a.pop();
+                sesh.players[p].stakeholder = sesh.stakeholders[i];
+                sesh.stakeholders[i].team.push(p);
+            }
+        }
+    }
+    for (i in sesh.stakeholders) {
+        let s = sesh.stakeholders[i];
+        if (s.active === 1) {
+            s.active = [s.team[Math.floor(Math.random() * s.team.length)]];
+        }
+        if (s.active < 0) {
+            s.active = s.team.slice(0);
+        }
+    }
+//    setSessionActive(true);
+//    session = sesh;
+//    console.log(`${Object.keys(session.players).length} total players`);
+    if (cb) {
+        cb(sesh);
+    }
+    fs.writeFile('../logs/sessionmini.json', JSON.stringify(sesh), () => {
+        console.log('dunne');
+    });
+    return sesh;
+};
+const startNewSession = (cb) => {
     let i = 0;
     let a = [];
     let sesh = new Session(1234);
@@ -115,13 +176,12 @@ const startNewSession = () => {
     for (i = 0; i < 10; i++) {
         a.sort(() => {return Math.round(Math.random() * 2) - 1})
     };
-//        console.log(`\nsesh, ${a.length} players connected\n`);
-    // Loop through the stakeholders adding useres from the list until no more remain:
+    // Loop through the stakeholders adding users from the list until no more remain:
     while (a.length > 0) {
         for (i in sesh.stakeholders) {
             if (a.length > 0) {
                 var p = a.pop();
-                sesh.players[p].stakeholder = Object.assign({}, sesh.stakeholders[i]);
+                sesh.players[p].stakeholder = sesh.stakeholders[i];
                 sesh.stakeholders[i].team.push(p);
             }
         }
@@ -135,7 +195,27 @@ const startNewSession = () => {
             s.active = s.team.slice(0);
         }
     }
+    setSessionActive(true);
+    session = sesh;
+//    console.log(`${Object.keys(session.players).length} total players`);
+    if (cb) {
+        cb(sesh);
+    }
+    fs.writeFile('../logs/session.json', JSON.stringify(sesh), () => {
+        console.log('dunne');
+    });
     return sesh;
+};
+const endSession = () => {
+    setSessionActive(false);
+};
+const getSession = () => {
+    let s = false;
+    if (sessionActive) {
+        s = session;
+    }
+//    console.log('request to getSession');
+    return s;
 };
 int = setInterval(waitForMaster, 500);
 var masterTimer = (function () {
@@ -157,7 +237,7 @@ class Player {
         this.active = boo;
     }
     handleDisconnect() {
-        console.log('Player', this.id, 'disconnected.');
+//        console.log('Player', this.id, 'disconnected.');
     }
 }
 io.on('connection', (socket) => {
@@ -173,6 +253,7 @@ io.on('connection', (socket) => {
         io.emit('masterConnected', master);
     });
     socket.on('addNewPlayer', (id, callback) => {
+//        console.log('add new player called');
         const player = new Player(id);
         player.socket = socket;
         players.set(id, player);
@@ -182,7 +263,8 @@ io.on('connection', (socket) => {
         if (callback) {
             if (typeof (callback) === 'function') {
                 callback({
-                    master: master
+                    master: master,
+                    session: getSession()
                 })
             }
         }
@@ -274,20 +356,41 @@ io.on('connection', (socket) => {
         }
     });
     socket.on('startNewSession', () => {
-//        startNewSession();
         var s = startNewSession();
-//        console.log(s);
-        console.log('emit startNewSession');
         io.emit('onNewSession', s);
-    })
+//        var s2 = startNewMiniSession();
+    });
+    socket.on('endSession', () => {
+        endSession();
+    });
+    socket.on('castVote', (s, src) => {
+        session.stakeholders[s].voteObj.total += 1;
+        session.players[src].stakeholder.votes -= 1;
+        console.log(session.players[src]);
+        io.emit('onNewSession', session);
+//        console.log(socket);
+    });
+    socket.on('getSession', (cb) => {
+        if (cb) {
+            cb(session);
+        } else {
+            console.log(`This method won't work without a callback`);
+        }
+    });
 });
 
 // Serve the static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 // All other routes will serve the 'index.html' file
-app.get('*', (req, res) => {
+app.get('', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.get('/player', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'player.html'));
+});
+app.get('/session', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'session.html'));
 });
 
 const port = 3000;

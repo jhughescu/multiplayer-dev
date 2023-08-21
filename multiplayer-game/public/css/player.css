@@ -24,3 +24,6 @@
    -o-animation: flickerAnimation 1s infinite;
     animation: flickerAnimation 1s infinite;
 }
+*{
+    font-family: monospace;
+}

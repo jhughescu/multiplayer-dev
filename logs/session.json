@@ -1,0 +1,439 @@
+{
+    "id": 1234,
+    "stakeholders": {
+        "government": {
+            "id": 0,
+            "stub": "government",
+            "title": "Government",
+            "team": ["player-1-2", "player-21-412", "player-16-228"],
+            "voteObj": {
+                "total": 0,
+                "detail": {}
+            },
+            "active": ["player-16-228"],
+            "votes": 10,
+            "likes": false
+        },
+        "individual-change-maker": {
+            "id": 1,
+            "stub": "individual-change-maker",
+            "title": "Individual Change Maker",
+            "team": ["player-14-692", "player-10-715", "player-18-923"],
+            "voteObj": {
+                "total": 0,
+                "detail": {}
+            },
+            "active": ["player-18-923"],
+            "votes": 10,
+            "likes": false
+        },
+        "well-established-business": {
+            "id": 2,
+            "stub": "well-established-business",
+            "title": "Well-established Business",
+            "team": ["player-8-302", "player-6-339", "player-15-149"],
+            "voteObj": {
+                "total": 0,
+                "detail": {}
+            },
+            "active": ["player-15-149"],
+            "votes": 10,
+            "likes": false
+        },
+        "civil-society-organisation": {
+            "id": 3,
+            "stub": "civil-society-organisation",
+            "title": "Civil Society Organisation",
+            "team": ["player-12-246", "player-2-791", "player-9-434"],
+            "voteObj": {
+                "total": 0,
+                "detail": {}
+            },
+            "active": ["player-12-246"],
+            "votes": 10,
+            "likes": false
+        },
+        "small-enterprise": {
+            "id": 4,
+            "stub": "small-enterprise",
+            "title": "Small Enterprise",
+            "team": ["player-20-608", "player-7-372", "player-11-734"],
+            "voteObj": {
+                "total": 0,
+                "detail": {}
+            },
+            "active": ["player-7-372"],
+            "votes": 10,
+            "likes": false
+        },
+        "public-voices-1": {
+            "id": 5,
+            "stub": "public-voices-1",
+            "title": "Public Voices 1",
+            "team": ["player-19-601", "player-3-647", "player-17-544"],
+            "voteObj": {
+                "total": 0,
+                "detail": {}
+            },
+            "active": ["player-19-601", "player-3-647", "player-17-544"],
+            "likes": true,
+            "votes": 10
+        },
+        "public-voices-2": {
+            "id": 5,
+            "stub": "public-voices-2",
+            "title": "Public Voices 2",
+            "team": ["player-13-481", "player-5-848"],
+            "voteObj": {
+                "total": 0,
+                "detail": {}
+            },
+            "active": ["player-13-481", "player-5-848"],
+            "likes": true,
+            "votes": 10
+        }
+    },
+    "playersMap": {},
+    "players": {
+        "player-5-848": {
+            "id": "player-5-848",
+            "active": true,
+            "stakeholder": {
+                "id": 5,
+                "stub": "public-voices-2",
+                "title": "Public Voices 2",
+                "team": ["player-13-481", "player-5-848"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-13-481", "player-5-848"],
+                "likes": true,
+                "votes": 10
+            }
+        },
+        "player-18-923": {
+            "id": "player-18-923",
+            "active": true,
+            "stakeholder": {
+                "id": 1,
+                "stub": "individual-change-maker",
+                "title": "Individual Change Maker",
+                "team": ["player-14-692", "player-10-715", "player-18-923"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-18-923"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-3-647": {
+            "id": "player-3-647",
+            "active": true,
+            "stakeholder": {
+                "id": 5,
+                "stub": "public-voices-1",
+                "title": "Public Voices 1",
+                "team": ["player-19-601", "player-3-647", "player-17-544"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-19-601", "player-3-647", "player-17-544"],
+                "likes": true,
+                "votes": 10
+            }
+        },
+        "player-20-608": {
+            "id": "player-20-608",
+            "active": true,
+            "stakeholder": {
+                "id": 4,
+                "stub": "small-enterprise",
+                "title": "Small Enterprise",
+                "team": ["player-20-608", "player-7-372", "player-11-734"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-7-372"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-2-791": {
+            "id": "player-2-791",
+            "active": true,
+            "stakeholder": {
+                "id": 3,
+                "stub": "civil-society-organisation",
+                "title": "Civil Society Organisation",
+                "team": ["player-12-246", "player-2-791", "player-9-434"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-12-246"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-17-544": {
+            "id": "player-17-544",
+            "active": true,
+            "stakeholder": {
+                "id": 5,
+                "stub": "public-voices-1",
+                "title": "Public Voices 1",
+                "team": ["player-19-601", "player-3-647", "player-17-544"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-19-601", "player-3-647", "player-17-544"],
+                "likes": true,
+                "votes": 10
+            }
+        },
+        "player-12-246": {
+            "id": "player-12-246",
+            "active": true,
+            "stakeholder": {
+                "id": 3,
+                "stub": "civil-society-organisation",
+                "title": "Civil Society Organisation",
+                "team": ["player-12-246", "player-2-791", "player-9-434"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-12-246"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-7-372": {
+            "id": "player-7-372",
+            "active": true,
+            "stakeholder": {
+                "id": 4,
+                "stub": "small-enterprise",
+                "title": "Small Enterprise",
+                "team": ["player-20-608", "player-7-372", "player-11-734"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-7-372"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-14-692": {
+            "id": "player-14-692",
+            "active": true,
+            "stakeholder": {
+                "id": 1,
+                "stub": "individual-change-maker",
+                "title": "Individual Change Maker",
+                "team": ["player-14-692", "player-10-715", "player-18-923"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-18-923"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-1-2": {
+            "id": "player-1-2",
+            "active": true,
+            "stakeholder": {
+                "id": 0,
+                "stub": "government",
+                "title": "Government",
+                "team": ["player-1-2", "player-21-412", "player-16-228"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-16-228"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-9-434": {
+            "id": "player-9-434",
+            "active": true,
+            "stakeholder": {
+                "id": 3,
+                "stub": "civil-society-organisation",
+                "title": "Civil Society Organisation",
+                "team": ["player-12-246", "player-2-791", "player-9-434"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-12-246"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-13-481": {
+            "id": "player-13-481",
+            "active": true,
+            "stakeholder": {
+                "id": 5,
+                "stub": "public-voices-2",
+                "title": "Public Voices 2",
+                "team": ["player-13-481", "player-5-848"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-13-481", "player-5-848"],
+                "likes": true,
+                "votes": 10
+            }
+        },
+        "player-6-339": {
+            "id": "player-6-339",
+            "active": true,
+            "stakeholder": {
+                "id": 2,
+                "stub": "well-established-business",
+                "title": "Well-established Business",
+                "team": ["player-8-302", "player-6-339", "player-15-149"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-15-149"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-21-412": {
+            "id": "player-21-412",
+            "active": true,
+            "stakeholder": {
+                "id": 0,
+                "stub": "government",
+                "title": "Government",
+                "team": ["player-1-2", "player-21-412", "player-16-228"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-16-228"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-10-715": {
+            "id": "player-10-715",
+            "active": true,
+            "stakeholder": {
+                "id": 1,
+                "stub": "individual-change-maker",
+                "title": "Individual Change Maker",
+                "team": ["player-14-692", "player-10-715", "player-18-923"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-18-923"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-19-601": {
+            "id": "player-19-601",
+            "active": true,
+            "stakeholder": {
+                "id": 5,
+                "stub": "public-voices-1",
+                "title": "Public Voices 1",
+                "team": ["player-19-601", "player-3-647", "player-17-544"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-19-601", "player-3-647", "player-17-544"],
+                "likes": true,
+                "votes": 10
+            }
+        },
+        "player-11-734": {
+            "id": "player-11-734",
+            "active": true,
+            "stakeholder": {
+                "id": 4,
+                "stub": "small-enterprise",
+                "title": "Small Enterprise",
+                "team": ["player-20-608", "player-7-372", "player-11-734"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-7-372"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-8-302": {
+            "id": "player-8-302",
+            "active": true,
+            "stakeholder": {
+                "id": 2,
+                "stub": "well-established-business",
+                "title": "Well-established Business",
+                "team": ["player-8-302", "player-6-339", "player-15-149"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-15-149"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-15-149": {
+            "id": "player-15-149",
+            "active": true,
+            "stakeholder": {
+                "id": 2,
+                "stub": "well-established-business",
+                "title": "Well-established Business",
+                "team": ["player-8-302", "player-6-339", "player-15-149"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-15-149"],
+                "votes": 10,
+                "likes": false
+            }
+        },
+        "player-16-228": {
+            "id": "player-16-228",
+            "active": true,
+            "stakeholder": {
+                "id": 0,
+                "stub": "government",
+                "title": "Government",
+                "team": ["player-1-2", "player-21-412", "player-16-228"],
+                "voteObj": {
+                    "total": 0,
+                    "detail": {}
+                },
+                "active": ["player-16-228"],
+                "votes": 10,
+                "likes": false
+            }
+        }
+    }
+}
