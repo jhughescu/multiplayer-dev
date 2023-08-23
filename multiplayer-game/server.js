@@ -9,15 +9,10 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-const gamedata = require('./data/gamedata.json');
+let gamedata = null;
 //console.log('gamedata');
 //console.log(gamedata);
 const gameDataOut = 'gamedata.csv';
-const data = [
-    { name: 'Alice', score: 100 },
-    { name: 'Bob', score: 75 },
-    { name: 'Carol', score: 90 },
-];
 
 const players = new Map();
 let master = null;
@@ -26,45 +21,233 @@ let isDev = true;
 let sessionActive = false;
 let session = null;
 
-//routes:
-app.get('/download-csv', (req, res) => {
-    console.log('go down the route');
-    const csvWriterInstance = csvWriter({
-        path: gameDataOut,
-        header: [
-            { id: 'name', title: 'Name' },
-            { id: 'score', title: 'Score' },
-        ],
-    });
-
-    csvWriterInstance.writeRecords(data)
-        .then(() => {
-            res.download(gameDataOut, (err) => {
-                if (err) {
-                    console.error('Error sending CSV:', err);
+let logCount = 0;
+const writeLogFile = (id, c, msg) => {
+//    let f = '../logs/' + id + '.json';
+    let f = `../logs/log.${logCount++}.${id}.json`;
+    if (msg) {
+        c = Object.assign({msg: msg}, c);
+    }
+//    console.log(`writing log: ${id}`);
+    fs.writeFile(f, JSON.stringify(c, null, 4), () => {console.log(`log written: ${f}`)})
+};
+const clearLogs = (cb) => {
+//    fs.unlink('../logs/', () => {console.log('gone')});
+//    console.log('clear any existing logs');
+    let p = '../logs';
+    fs.readdir(p, (err, files) => {
+        let l = files.length
+        if (l === 0) {
+            if (cb) {
+                cb();
+            }
+        }
+        if (err) throw err;
+        for (const f of files) {
+            let d = `${p}/${f}`;
+            fs.copyFileSync(d, d.replace('logs/', 'logscopy/'));
+            fs.unlink(d, (e) => {
+                if (l-- === 1) {
+//                    console.log('all log files deleted');
+                    if (cb) {
+                        cb();
+                    }
                 }
-                // Delete the CSV file after sending
-                fs.unlinkSync(gameDataOut);
-            });
-        })
-        .catch((error) => {
-            console.error('Error writing CSV:', error);
-            res.status(500).send('Internal Server Error - route not found');
-        });
-});
-// end routes
-
+                if (e) throw e;
+            })
+        }
+    });
+//    console.log(l);
+//    console.log('clearing dunne');
+};
 const waitForMaster = () => {
     if (master !== null) {
         clearInterval(masterTimer);
         clearInterval(int);
     }
 };
+const processData = (d) => {
+    let s = d.stakeholders;
+    let f = d.defaults;
+    writeLogFile('steak', s, 'stakeholders as used by processData method');
+    for (var i in s) {
+        s[i].stub = s[i].title.toLowerCase().replace(/ /gm, '_');
+//        console.log(s[i].stub);
+//        console.log(s[i]);
+        for (var j in f) {
+            if (!s[i].hasOwnProperty(j)) {
+                s[i][j] = f[j];
+            }
+        }
+    }
+    writeLogFile('data', d, 'gameData prepared by processData method');
+//    d = Object.assign({}, d);
+    return d;
+};
+const setupStakeholders = () => {
+    let defs = gamedata.defaults;
+    let sh = Object.assign({}, gamedata.stakeholders);
+    let k = null;
+    writeLogFile('stakeholdersPre', sh, 'list of stakeholders from the start setupStakeholders method');
+
+    for (var i in sh) {
+
+        k = `st_${sh[i].id}`;
+
+        for (var j in defs) {
+            if (!sh[i].hasOwnProperty(j)) {
+                sh[i][j] = defs[j];
+            }
+
+        }
+        sh[i] = new Stakeholder(i, sh[i], defs);
+        sh[i] = minifyStakeholder(i, sh[i]);
+    }
+    writeLogFile('stakeholdersPost', sh, 'list of stakeholders from the setupStakeholders method');
+    return sh;
+};
+const minifyStakeholder = (id, sh) => {
+    let m = {
+        id: sh.id,
+        team: sh.team,
+        v: sh.votes,
+        vIn: sh.voteObj.total,
+        active: sh.active
+    };
+//    writeLogFile(`stakeholdersDev-${id}1`, sh);
+//    writeLogFile(`stakeholdersDev-${id}2`, m);
+    return m;
+};
+const unpackStakeholder = (id, sh) => {
+
+};
+const setSessionActive = (boo) => {
+//    console.log(`setSessionActive ${boo}`);
+    sessionActive = boo;
+};
+const getShortPlayerID = (i) => {
+    return i.replace('player-', '');
+};
+const getFullPlayerID = (i) => {
+    let id = i;
+    if (i.indexOf('player-') > -1) {
+        id = 'player-' + i;
+    }
+    return id;
+};
+const minifyPlayerID = (id) => {
+    return id.replace('player-', '');
+};
+const startNewSession = (cb) => {
+    let i = 0;
+    let a = [];
+    let sesh = new Session(1234);
+    sesh.stakeholders = setupStakeholders();
+//    sesh.playersMap = new Map();
+    sesh.players = {};
+    // copy the list of players and thoroughly randomise it:
+    for (let [k, v] of players) {
+        k = minifyPlayerID(k);
+        sesh.players[k] = Object.assign({}, v);
+        delete sesh.players[k].socket;
+        a.push(k);
+    };
+    for (i = 0; i < 10; i++) {
+        a.sort(() => {return Math.round(Math.random() * 2) - 1})
+    };
+    // Loop through the stakeholders adding users from the list until no more remain:
+    let brake = 3000;
+    console.log(a.length);
+    console.log(sesh);
+    while (a.length > 0 && brake-- > 0) {
+//    console.log('########################################## HERE' + brake);
+        for (i in sesh.stakeholders) {
+            console.log(i);
+            if (a.length > 0) {
+                var p = minifyPlayerID(a.pop());
+                sesh.players[p].stakeholder = sesh.stakeholders[i];
+                sesh.stakeholders[i].team.push(p);
+            }
+        }
+    }
+
+    for (i in sesh.stakeholders) {
+        let s = sesh.stakeholders[i];
+        if (s.active === 1) {
+            s.active = [s.team[Math.floor(Math.random() * s.team.length)]];
+        }
+        if (s.active < 0) {
+            s.active = s.team.slice(0);
+        }
+    }
+    setSessionActive(true);
+    delete sesh.players;
+    session = sesh;
+    if (cb) {
+        cb(sesh);
+    }
+    return sesh;
+};
+const endSession = () => {
+    setSessionActive(false);
+};
+const getSession = () => {
+    let s = false;
+    if (sessionActive) {
+        s = session;
+    }
+//    console.log('request to getSession');
+    return s;
+};
+const startApp = () => {
+    console.log('all ready, we can start');
+    gamedata = processData(require('./data/gamedata.json'));
+    int = setInterval(waitForMaster, 500);
+};
+const init = () => {
+//    console.log('init');
+    // first clear away any old logs (after copying them for reference)
+    // Then fire 'startApp' to kick everything off
+    clearLogs(startApp);
+    setTimeout(function () {
+//        gamedata = processData(require('./data/gamedata.json'));
+//        int = setInterval(waitForMaster, 500);
+    }, 1000);
+};
+const depart = () => {
+    console.log('get out of here');
+    clearLogs();
+};
+
+
+var masterTimer = (function () {
+    var P = ["\\", "|", "/", "-"];
+    var x = 0;
+    return setInterval(function () {
+        process.stdout.write("\rwaiting for master " + P[x++]);
+        x &= 3;
+    }, 250);
+})();
+
+class Player {
+    constructor(id) {
+        this.id = minifyPlayerID(id);
+        this.socket = null;
+        this.active = true;
+        this.stakeholder = null;
+    }
+    setActive(boo) {
+        this.active = boo;
+    }
+    handleDisconnect() {
+//        console.log('Player', this.id, 'disconnected.');
+    }
+};
 class Session {
     constructor(id) {
         this.id = id;
     }
-}
+};
 class Stakeholder {
     constructor(stub, s, d) {
         this.id = s.id;
@@ -82,164 +265,9 @@ class Stakeholder {
         }
 //        this.likes = 0;
     }
-}
-const setupStakeholders = () => {
-    let defs = gamedata.defaults;
-    let sh = gamedata.stakeholders;
-    for (var i in sh) {
-        for (var j in defs) {
-            if (!sh[i].hasOwnProperty(j)) {
-                sh[i][j] = defs[j];
-            }
+};
 
-        }
-        sh[i] = new Stakeholder(i, sh[i], defs);
-    }
-    return sh;
-};
-const setSessionActive = (boo) => {
-//    console.log(`setSessionActive ${boo}`);
-    sessionActive = boo;
-};
-const getShortPlayerID = (i) => {
-    return i.replace('player-', '');
-};
-const getFullPlayerID = (i) => {
-    let id = i;
-    if (i.indexOf('player-') > -1) {
-        id = 'player-' + i;
-    }
-    return id;
-};
-const startNewMiniSession = (cb) => {
-    let i = 0;
-    let a = [];
-    let sesh = new Session(12345);
-    sesh.stakeholders = setupStakeholders();
-    sesh.playersMap = new Map();
-    sesh.players = {};
-    // copy the list of players and thoroughly randomise it:
-    for (let [k, v] of players) {
-        sesh.players[k] = Object.assign({}, v);
-        delete sesh.players[k].socket;
-        a.push(getShortPlayerID(k));
-    };
-    fs.writeFile('../logs/sessionmini1.json', JSON.stringify(sesh.players), () => {
-        console.log('dunne');
-    });
-    for (i = 0; i < 10; i++) {
-        a.sort(() => {return Math.round(Math.random() * 2) - 1})
-    };
-    // Loop through the stakeholders adding users from the list until no more remain:
-    while (a.length > 0) {
-        for (i in sesh.stakeholders) {
-            if (a.length > 0) {
-                var p = a.pop();
-                sesh.players[p].stakeholder = sesh.stakeholders[i];
-                sesh.stakeholders[i].team.push(p);
-            }
-        }
-    }
-    for (i in sesh.stakeholders) {
-        let s = sesh.stakeholders[i];
-        if (s.active === 1) {
-            s.active = [s.team[Math.floor(Math.random() * s.team.length)]];
-        }
-        if (s.active < 0) {
-            s.active = s.team.slice(0);
-        }
-    }
-//    setSessionActive(true);
-//    session = sesh;
-//    console.log(`${Object.keys(session.players).length} total players`);
-    if (cb) {
-        cb(sesh);
-    }
-    fs.writeFile('../logs/sessionmini.json', JSON.stringify(sesh), () => {
-        console.log('dunne');
-    });
-    return sesh;
-};
-const startNewSession = (cb) => {
-    let i = 0;
-    let a = [];
-    let sesh = new Session(1234);
-    sesh.stakeholders = setupStakeholders();
-    sesh.playersMap = new Map();
-    sesh.players = {};
-    // copy the list of players and thoroughly randomise it:
-    for (let [k, v] of players) {
-        sesh.players[k] = Object.assign({}, v);
-        delete sesh.players[k].socket;
-        a.push(k);
-    };
-    for (i = 0; i < 10; i++) {
-        a.sort(() => {return Math.round(Math.random() * 2) - 1})
-    };
-    // Loop through the stakeholders adding users from the list until no more remain:
-    while (a.length > 0) {
-        for (i in sesh.stakeholders) {
-            if (a.length > 0) {
-                var p = a.pop();
-                sesh.players[p].stakeholder = sesh.stakeholders[i];
-                sesh.stakeholders[i].team.push(p);
-            }
-        }
-    }
-    for (i in sesh.stakeholders) {
-        let s = sesh.stakeholders[i];
-        if (s.active === 1) {
-            s.active = [s.team[Math.floor(Math.random() * s.team.length)]];
-        }
-        if (s.active < 0) {
-            s.active = s.team.slice(0);
-        }
-    }
-    setSessionActive(true);
-    session = sesh;
-//    console.log(`${Object.keys(session.players).length} total players`);
-    if (cb) {
-        cb(sesh);
-    }
-    fs.writeFile('../logs/session.json', JSON.stringify(sesh), () => {
-        console.log('dunne');
-    });
-    return sesh;
-};
-const endSession = () => {
-    setSessionActive(false);
-};
-const getSession = () => {
-    let s = false;
-    if (sessionActive) {
-        s = session;
-    }
-//    console.log('request to getSession');
-    return s;
-};
-int = setInterval(waitForMaster, 500);
-var masterTimer = (function () {
-    var P = ["\\", "|", "/", "-"];
-    var x = 0;
-    return setInterval(function () {
-        process.stdout.write("\rwaiting for master " + P[x++]);
-        x &= 3;
-    }, 250);
-})();
-class Player {
-    constructor(id) {
-        this.id = id;
-        this.socket = null;
-        this.active = true;
-        this.stakeholder = null;
-    }
-    setActive(boo) {
-        this.active = boo;
-    }
-    handleDisconnect() {
-//        console.log('Player', this.id, 'disconnected.');
-    }
-}
+
 io.on('connection', (socket) => {
     socket.on('areWeDev', (cb) => {
         cb(isDev);
@@ -356,8 +384,12 @@ io.on('connection', (socket) => {
         }
     });
     socket.on('startNewSession', () => {
+        console.log('startNewSession');
         var s = startNewSession();
-        io.emit('onNewSession', s);
+//        console.log('send the gamedata');
+//        console.log(gamedata);
+        writeLogFile('gameDataAsSent', gamedata, 'startNewSession emit method');
+        io.emit('onNewSession', {session: s, gamedata: gamedata});
 //        var s2 = startNewMiniSession();
     });
     socket.on('endSession', () => {
@@ -366,7 +398,7 @@ io.on('connection', (socket) => {
     socket.on('castVote', (s, src) => {
         session.stakeholders[s].voteObj.total += 1;
         session.players[src].stakeholder.votes -= 1;
-        console.log(session.players[src]);
+//        console.log(session.players[src]);
         io.emit('onNewSession', session);
 //        console.log(socket);
     });
@@ -377,6 +409,18 @@ io.on('connection', (socket) => {
             console.log(`This method won't work without a callback`);
         }
     });
+});
+
+
+// Code to run when the server app shuts down:
+process.on('exit', () => {
+    depart();
+});
+process.on('SIGINT', () => {
+    depart();
+});
+process.on('SIGTERM', () => {
+    depart();
 });
 
 // Serve the static files from the 'public' directory
@@ -393,7 +437,34 @@ app.get('/session', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'session.html'));
 });
 
+app.get('/download-csv', (req, res) => {
+    console.log('go down the route');
+    const csvWriterInstance = csvWriter({
+        path: gameDataOut,
+        header: [
+            { id: 'name', title: 'Name' },
+            { id: 'score', title: 'Score' },
+        ],
+    });
+
+    csvWriterInstance.writeRecords(data)
+        .then(() => {
+            res.download(gameDataOut, (err) => {
+                if (err) {
+                    console.error('Error sending CSV:', err);
+                }
+                // Delete the CSV file after sending
+                fs.unlinkSync(gameDataOut);
+            });
+        })
+        .catch((error) => {
+            console.error('Error writing CSV:', error);
+            res.status(500).send('Internal Server Error - route not found');
+        });
+});
+
 const port = 3000;
 server.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
+    init();
 });

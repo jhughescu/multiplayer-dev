@@ -1,32 +1,32 @@
 {
     "stakeholders": {
-        "government": {
+        "st0": {
             "id": 0,
             "title": "Government"
         },
-        "individual-change-maker": {
+        "st1": {
             "id": 1,
             "title": "Individual Change Maker"
         },
-        "well-established-business": {
+        "st2": {
             "id": 2,
             "title": "Well-established Business"
         },
-        "civil-society-organisation": {
+        "st3": {
             "id": 3,
             "title": "Civil Society Organisation"
         },
-        "small-enterprise": {
+        "st4": {
             "id": 4,
             "title": "Small Enterprise"
         },
-        "public-voices-1": {
+        "st5": {
             "id": 5,
             "title": "Public Voices 1",
             "active": -1,
             "likes": true
         },
-        "public-voices-2": {
+        "st6": {
             "id": 5,
             "title": "Public Voices 2",
             "active": -1,

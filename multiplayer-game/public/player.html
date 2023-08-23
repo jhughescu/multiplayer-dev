@@ -121,8 +121,10 @@
                 vb.attr('disabled', true);
             }
         }
-        const joinSession = (sesh) => {
-            console.log(sesh)
+        const joinSession = (gamepack) => {
+            console.log(gamepack.session);
+            console.log(gamepack.gamedata);
+            let sesh = gamepack.session;
             let id = getID();
             let s = sesh.players[getID()].stakeholder;
             let active = s.active[0] === id || s.active.length === s.team.length;
@@ -163,8 +165,8 @@
 //            $('h1').fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d).fadeOut(d).fadeIn(d);
             resetPlayer();
         });
-        socket.on('onNewSession', (sesh) => {
-            joinSession(sesh);
+        socket.on('onNewSession', (gamePack) => {
+            joinSession(gamePack);
         });
     </script>
 </body>

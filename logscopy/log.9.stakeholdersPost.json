@@ -1,0 +1,52 @@
+{
+    "msg": "list of stakeholders from the setupStakeholders method",
+    "st0": {
+        "id": 0,
+        "team": [],
+        "v": 10,
+        "vIn": 0,
+        "active": 1
+    },
+    "st1": {
+        "id": 1,
+        "team": [],
+        "v": 10,
+        "vIn": 0,
+        "active": 1
+    },
+    "st2": {
+        "id": 2,
+        "team": [],
+        "v": 10,
+        "vIn": 0,
+        "active": 1
+    },
+    "st3": {
+        "id": 3,
+        "team": [],
+        "v": 10,
+        "vIn": 0,
+        "active": 1
+    },
+    "st4": {
+        "id": 4,
+        "team": [],
+        "v": 10,
+        "vIn": 0,
+        "active": 1
+    },
+    "st5": {
+        "id": 5,
+        "team": [],
+        "v": 10,
+        "vIn": 0,
+        "active": -1
+    },
+    "st6": {
+        "id": 5,
+        "team": [],
+        "v": 10,
+        "vIn": 0,
+        "active": -1
+    }
+}
