@@ -4,120 +4,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master</title>
+    <title>Sustainability Game</title>
     <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
-        <script src="/socket.io/socket.io.js"></script>
-<!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
-    <link rel='stylesheet' href='css/master.css'>
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src='templates/sustemplates.js'></script>
+    <link rel='stylesheet' href='css/basics.css'>
+    <link rel='stylesheet' href='css/player.css'>
 </head>
 
 <body>
-    <h1>Master</h1>
-    <p>This is the master client, it listens for player connections</p>
-    <p id='message'></p>
-    <button id='startSession'>Start Session</button>
-    <button id='endSession'>End Session</button>
-    <div id='players'></div>
-
-    <div>
-    </div>
-
+    <h1>Sustainability Game</h1>
+    <div id='insertion'></div>
 
     <script>
         const socket = io();
-        const PINGBTN = `pingbtn-`;
-        const RESETBTN = `resetbtn-`;
+        let butt = null;
+        let txt = null;
+        let staticID = null;
+        let env = null;
+        let clientData = {role: 'player'};
+        const log = (msg) => {
+            let i = 'log_' + Object.keys(logList).length;
+            logList[i] = msg;
+//            console.log(i, msg);
+        };
+        const getLogs = () => {
+            for (var i in logList) {
+//                console.log(`${i}: ${logList[i]}`);
+            }
+        };
+        const onRequestSession = (o) => {
+//            console.log(`onRequestSession: ${boo}`);
+            if (o.player === staticID) {
+                if (o.success) {
+                    newPlayer();
+                } else {
+                    alert(`no session with ID ${txt.value} exists`);
+                }
+            }
+//            if (boo) {
+//                if (boo === staticID) {
+//                    newPlayer();
+//                }
+//            } else {
+//                alert(`no session with ID ${txt.value} exists`)
+//            }
+        };
+//        const requestSession = () => {
+//            socket.emit('requestSession', {session: txt.val(), player: staticID});
+//        };
+        const getHash = () => {
+            let h = '';
+            if (window.location.hash && isDev) {
+                if (window.location.hash.substr(0, 1) === '#') {
+                    h = window.location.hash.replace('#', '');
+                }
+            }
+            return h;
+        };
+        const getStorageID = () => {
+            return `player${getHash()}ID`
+        };
+        const generateID = () => {
+            let id = 'player-' + Math.round(Math.random() * 1000);
+            if (window.location.hash) {
+                if (window.location.hash.substr(0, 1) === '#') {
+                    id = id.replace('-', '-' + window.location.hash.replace('#', '') + '-');
+                }
+            }
+            //            console.log(`generated id: ${id}`);
+            return id;
+        };
+        const getID = () => {
+            let id = localStorage.getItem(getStorageID());
+//            console.log(`storedID: ${id}`);
+//            console.log(`staticID: ${staticID}`);
+            if (!id) {
+                id = generateID();
+            } else {
+                // we have the local storage object, now we must extract the id from it:
+//                console.log(id);
+                id = JSON.parse(id).id;
+//                console.log(`ID retrieved from localStorage: ${id}`);
+            }
+            staticID = id;
+            return id;
+        };
+        const getMinID = () => {
+//            console.log();
+            return getID().replace(env.gamedata.prefixes.player, '')
+        };
+        const newPlayer = () => {
+            let id = getID();
+            log(`newPlayer called, id: ${id}`);
+//            getLogs();
+            storageID = getStorageID();
+            document.title = id;
+            $('h2').html(`id: ${id}`);
+            socket.emit('addNewPlayer', id, (response) => {
+                //                console.log('callback from the addNewPlayer method');
+                //                console.log(response);
+                //                if () {}
 
+                if (response.master === null) {
+                    //                    console.log('waiting for master', true);
+                } else {
+                    //                    console.log(`master is ${response.master}`, false);
+                }
+                if (response.gamedata && response.session && response.players) {
+                    //                    joinSession({gamedata: response.gamedata, session: response.session, players: response.players});
+                } else {
+                    //                    console.log('no gamedata OR no session OR no players');
+                }
+                gameInit();
+            });
+        };
+        const gameInit = () => {
+            // this code is open to abuse, replace it with insertion of template HTML
+            let sessionID = txt.value;
+            renderGameScreen();
+            console.log(`setting the localStorage ${sessionID}`);
+            localStorage.setItem(getStorageID(), JSON.stringify({id: staticID, sessionID: sessionID}));
+        };
+        const kickout = () => {
+            socket.emit('areWeDev', function (dev) {
+                if (dev) {
+                    console.log('kick me out & reload');
+                    localStorage.removeItem(getStorageID());
+                    location.reload();
+                }
+            });
+        };
+        const renderTemplate = (temp, targ, o) => {
+            targ = '#' + targ;
+            let ob = Object.assign({}, o);
+            const compiledTemplate = Handlebars.templates[temp];
+            const renderedHtml = compiledTemplate(ob);
+            $(targ).html(renderedHtml);
+        };
+        const renderGameScreen = () => {
+            let o = {
+                playerID: staticID
+            };
+            renderTemplate('game', 'insertion', o);
+        };
+
+        const init = () => {
+//            console.log('this is init ');
+//            let id = getID();
+//            storageID = getStorageID();
+//            console.log(`storageID: ${storageID}`)
+//            console.log(`init, id: ${id}`)
+        };
+        const initRenderNOTUSED = () => {
+            let newPlayer = !env.playersBasic.hasOwnProperty(getMinID());
+            log(`id: ${getID()}`)
+            log(`connect callback, ${newPlayer ? 'new player' : 'existing player'}`);
+            log(`p.playersBasic has own property ${getID()}? ${env.playersBasic.hasOwnProperty(getID())}`);
+            log(`isDev? ${isDev}`);
+            console.log(getID());
+            console.log(env);
+            if (newPlayer) {
+                renderTemplate('newlogin', 'insertion', {
+                    value: env.isDev ? env.sessionID : 123355
+                });
+                butt = $('#enter');
+                txt = $('#seshnum');
+                butt.on('click', () => {
+                    requestSession();
+                });
+                txt.on('keydown', (ev) => {
+                    if (ev.keyCode === '13') {
+                        requestSession();
+                    }
+                });
+                txt.focus();
+            } else {
+                renderGameScreen();
+            }
+        };
+        const onConnectCallback = (p) => {
+            console.log('on connect callback');
+            // NOTE: isDev is key to all subsequent logic so the following line MUST come before all other methods
+            isDev = p.isDev;
+            env = Object.assign({}, p);
+            clientData.id = getMinID();
+            socket.emit('customDataEvent', clientData);
+            let newPlayer = !p.playersBasic.hasOwnProperty(getMinID());
+//            log(`id: ${getID()}`)
+//            log(`connect callback, ${newPlayer ? 'new player' : 'existing player'}`);
+//            log(`p.playersBasic has own property ${getID()}? ${p.playersBasic.hasOwnProperty(getID())}`);
+//            log(`isDev? ${isDev}`);
+//            console.log(getID());
+//            console.log(p);
+            if (newPlayer) {
+                renderTemplate('newlogin', 'insertion', {
+                    value: p.isDev ? p.sessionID : 123355
+                });
+//                butt = $('#enter');
+//                txt = $('#seshnum');
+//                butt.on('click', () => {
+//                    requestSession();
+//                });
+//                txt.on('keydown', (ev) => {
+//                    if (ev.keyCode === '13') {
+//                        requestSession();
+//                    }
+//                });
+//                txt.focus();
+            } else {
+                renderGameScreen();
+            }
+        };
+        const onConnect = () => {
+            console.log('on connect');
+//            init();
+            socket.emit('getPlayerPack', (p) => {
+                onConnectCallback(p);
+            });
+        };
+
+        let isDev = false;
+        let logList = {};
+
+        socket.on('onRequestSession', (boo) => {
+            onRequestSession(boo);
+        });
         socket.on('connect', () => {
-            socket.emit('nowIAmTheMaster');
+            onConnect();
         });
-        socket.on('onPlayerConnect', (msg) => {
-            onPlayerConnect(msg);
+        socket.on('onStoredGameFound', () => {
+            console.log('onStoredGameFound heard');
+            onConnect();
         });
-        socket.on('onGetPlayers', (msg) => {
-//            console.log('I hear onGetPlayers')
-            onGetPlayers(msg);
+        socket.on('onUpdateTimer', (t) => {
+            let p = $('#gameTimer');
+            p.html(t);
         });
-        socket.on('onGetPlayerIDs', (msg) => {
-//            console.log('I hear onGetPlayerIDs')
-            onGetPlayerIDs(msg);
-        });
-        socket.on('updatePlayers', (arr) => {
-//            console.log('I hear updatePlayers')
-            onGetPlayerIDs(arr);
-        });
-        socket.on('newPlayer', (players) => {
-            newPlayer(players);
-        });
-        const buttonSetup = () => {
-            let b = document.getElementsByClassName('pingBtn');
-            [...b].forEach((bu) => {
-                bu.addEventListener('click', (evt) => {
-                    let id = evt.target.id.replace(PINGBTN, '');
-                    socket.emit('playerPing', id);
-                });
-            });
-            b = document.getElementsByClassName('resetBtn');
-            [...b].forEach((bu) => {
-                bu.addEventListener('click', (evt) => {
-                    let id = evt.target.id.replace(RESETBTN, '');
-                    socket.emit('playerReset', id);
-                });
-            });
-        };
-        let ssb = document.getElementById('startSession');
-        ssb.addEventListener('click', (evt) => {
-            console.log('cow');
-            socket.emit('startNewSession', function (s) {
-                console.log('mooooooooooooooooooooo');
-            });
-        });
-        let esb = document.getElementById('endSession');
-        esb.addEventListener('click', (evt) => {
-            socket.emit('endSession');
-        });
-        const playerDisplay = (p, i) => {
-            var e = document.getElementById('players');
-            var s = '';
-            s += `<div class='${p.active ? 'active' : 'inactive'}'>${p.id} <button class="pingBtn" id="${PINGBTN}${p.id}">Ping</button>`;
-            s += `<button class="resetBtn" id="${RESETBTN}${p.id}">Reset</button></div>`;
-            e.innerHTML += s;
-        };
-        const clearPlayers = () => {
-            document.getElementById('players').innerHTML = ``;
-        };
-        const onPlayerConnect = (msg) => {
-            document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;
-        };
-        const onGetPlayers = (arr) => {
-//            console.log('onGetPlayers');
-//            console.log(arr);
-            clearPlayers();
-            document.getElementById('players').innerHTML = '<b>players:</b>';
-            for (var i = 0; i < arr.length; i++) {
-                playerDisplay(arr[i], i);
-//                console.log(players);
-//                console.log(arr[i]);
-            }
-            buttonSetup();
-        };
-        const onGetPlayerIDsOld = (arr) => {
-            console.log('onGetPlayerIDs');
-            console.log(arr);
-            clearPlayers();
-            document.getElementById('players').innerHTML = '<b>players:</b>';
-            for (var i = 0; i < arr.length; i++) {
-                playerDisplay(arr[i], i);
-//                console.log(players);
-                console.log(arr[i]);
-            }
-            buttonSetup();
-        };
-        const newPlayer = (id) => {
-            socket.emit('getPlayerIDs');
-        }
-        socket.emit('getPlayerIDs');
-//        socket.emit('getPlayers');
+        socket.on('terminateSession', kickout);
+        window.showLog = getLogs;
+        //
+        //        init();
 
     </script>
 </body>

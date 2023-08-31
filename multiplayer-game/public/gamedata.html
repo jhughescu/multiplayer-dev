@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gameData</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+        <script src="/socket.io/socket.io.js"></script>
+<!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
+    <link rel='stylesheet' href='css/basics.css'>
+    <link rel='stylesheet' href='css/gamedata.css'>
+</head>
+
+<body>
+    <h1>Game data</h1>
+    <p id='summary'></p>
+    <div id='render'>
+
+    </div>
+    <script>
+        const socket = io();
+        let data = null;
+        var t = `{{#each stakeholders}}
+            <div>
+                <h3>{{@key}}</h3>
+                <table>
+                {{#each this}}
+
+                    <tr>
+                        <td>{{@key}}</td><td>{{this}}</td>
+                    </tr>
+
+                {{/each}}
+                </table>
+            </div>
+        {{/each}}`;
+        const getTemplate = (t) => {
+            return Handlebars.compile(t);
+        };
+        const updateData = (s) => {
+            if (data === null) {
+                data = s;
+            }
+        };
+        const updateView = () => {
+            const html = getTemplate(t)(data);
+            let v = $('#render');
+            v.html(html);
+        };
+        socket.on('connect', function () {
+            socket.emit('getGameData', function (d) {
+                updateData(d);
+                updateView();
+            })
+        });
+    </script>
+    </body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>playersBasic</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+        <script src="/socket.io/socket.io.js"></script>
+<!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
+    <link rel='stylesheet' href='css/session.css'>
+</head>
+
+<body>
+    <h1>Players</h1>
+    <p id='summary'></p>
+    <div id='players'></div>
+
+    <script>
+        const socket = io();
+        let players = null;
+        const sortPlayers = (a, b) => {
+            a = parseInt(a.split('-')[1]);
+            b = parseInt(b.split('-')[1]);
+//            console.log(a, b);
+            var r = 0;
+            if (a > b) {
+                r = 1;
+            } else if (a < b) {
+                r = -1;
+            }
+            return r;
+        };
+        const updateView = (p) => {
+            var v = $('#players');
+            var s = $('#summary');
+            v.html('');
+            p = Object.keys(p);
+//            console.log(p);
+            p = p.sort(sortPlayers);
+//            console.log(p.length);
+            s.html(`This is a list of the ${p.length} player IDs as connected to the app`);
+            for (var i = 0; i < p.length; i++) {
+                v.append(`<div>${p[i]}</div>`)
+            }
+        };
+        socket.on('connect', function () {
+            socket.emit('customDataEvent', {role: 'log.playerList'});
+            socket.emit('getBasicPlayers', function (bp) {
+                updateView(bp);
+            })
+        });
+        socket.on('onAddNewPlayer', (p) => {
+//            console.log('onp: ' + p);
+            updateView(p);
+        });
+    </script>
+    </body>
+</html>

@@ -1,0 +1,21 @@
+<div id='login'>
+    <p>If you have a session ID you can enter it here to join the session</p>
+    <input type='number' id='seshnum' placeholder='enter code...' value='{{value}}'><button id='enter'>Join session</button>
+</div>
+<script>
+    console.log('i am him');
+    const requestSession = () => {
+        socket.emit('requestSession', {session: txt.val(), player: staticID});
+    };
+    butt = $('#enter');
+    txt = $('#seshnum');
+    butt.on('click', () => {
+        requestSession();
+    });
+    txt.on('keydown', (ev) => {
+        if (ev.keyCode === '13') {
+            requestSession();
+        }
+    });
+    txt.focus();
+</script>

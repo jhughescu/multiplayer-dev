@@ -62,5 +62,11 @@
         "active": 1,
         "votes": 10,
         "likes": false
+    },
+    "map": {
+        "v": "votes",
+        "vIn": "votesReceived",
+        "votes": "v",
+        "votesReceived": "vIn"
     }
 }

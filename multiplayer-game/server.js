@@ -1,4 +1,5 @@
 const express = require('express');
+const exphbs = require('express-handlebars');
 const http = require('http');
 const socketIO = require('socket.io');
 const fs = require('fs');
@@ -6,228 +7,25 @@ const path = require('path');
 const csvWriter = require('csv-writer').createObjectCsvWriter;
 
 const app = express();
+const port = 3000;
 const server = http.createServer(app);
 const io = socketIO(server);
 
-let gamedata = null;
-//console.log('gamedata');
-//console.log(gamedata);
-const gameDataOut = 'gamedata.csv';
+const isDev = true;
 
-const players = new Map();
-let master = null;
-let int = null;
-let isDev = true;
-let sessionActive = false;
-let session = null;
+//app.engine('handlebars', exphbs.engine({defaultLayout: 'backup'}));
+app.engine('hbs', exphbs.engine({extname: '.hbs', defaultLayout: ''}));
+app.set('view engine', 'hbs');
+app.set('views', path.join(__dirname, 'views'));
+
+const gameDataOut = 'gamedata.csv';
+const playerPrefix = 'player-';
 
 let logCount = 0;
-const writeLogFile = (id, c, msg) => {
-//    let f = '../logs/' + id + '.json';
-    let f = `../logs/log.${logCount++}.${id}.json`;
-    if (msg) {
-        c = Object.assign({msg: msg}, c);
-    }
-//    console.log(`writing log: ${id}`);
-    fs.writeFile(f, JSON.stringify(c, null, 4), () => {console.log(`log written: ${f}`)})
-};
-const clearLogs = (cb) => {
-//    fs.unlink('../logs/', () => {console.log('gone')});
-//    console.log('clear any existing logs');
-    let p = '../logs';
-    fs.readdir(p, (err, files) => {
-        let l = files.length
-        if (l === 0) {
-            if (cb) {
-                cb();
-            }
-        }
-        if (err) throw err;
-        for (const f of files) {
-            let d = `${p}/${f}`;
-            fs.copyFileSync(d, d.replace('logs/', 'logscopy/'));
-            fs.unlink(d, (e) => {
-                if (l-- === 1) {
-//                    console.log('all log files deleted');
-                    if (cb) {
-                        cb();
-                    }
-                }
-                if (e) throw e;
-            })
-        }
-    });
-//    console.log(l);
-//    console.log('clearing dunne');
-};
-const waitForMaster = () => {
-    if (master !== null) {
-        clearInterval(masterTimer);
-        clearInterval(int);
-    }
-};
-const processData = (d) => {
-    let s = d.stakeholders;
-    let f = d.defaults;
-    writeLogFile('steak', s, 'stakeholders as used by processData method');
-    for (var i in s) {
-        s[i].stub = s[i].title.toLowerCase().replace(/ /gm, '_');
-//        console.log(s[i].stub);
-//        console.log(s[i]);
-        for (var j in f) {
-            if (!s[i].hasOwnProperty(j)) {
-                s[i][j] = f[j];
-            }
-        }
-    }
-    writeLogFile('data', d, 'gameData prepared by processData method');
-//    d = Object.assign({}, d);
-    return d;
-};
-const setupStakeholders = () => {
-    let defs = gamedata.defaults;
-    let sh = Object.assign({}, gamedata.stakeholders);
-    let k = null;
-    writeLogFile('stakeholdersPre', sh, 'list of stakeholders from the start setupStakeholders method');
-
-    for (var i in sh) {
-
-        k = `st_${sh[i].id}`;
-
-        for (var j in defs) {
-            if (!sh[i].hasOwnProperty(j)) {
-                sh[i][j] = defs[j];
-            }
-
-        }
-        sh[i] = new Stakeholder(i, sh[i], defs);
-        sh[i] = minifyStakeholder(i, sh[i]);
-    }
-    writeLogFile('stakeholdersPost', sh, 'list of stakeholders from the setupStakeholders method');
-    return sh;
-};
-const minifyStakeholder = (id, sh) => {
-    let m = {
-        id: sh.id,
-        team: sh.team,
-        v: sh.votes,
-        vIn: sh.voteObj.total,
-        active: sh.active
-    };
-//    writeLogFile(`stakeholdersDev-${id}1`, sh);
-//    writeLogFile(`stakeholdersDev-${id}2`, m);
-    return m;
-};
-const unpackStakeholder = (id, sh) => {
-
-};
-const setSessionActive = (boo) => {
-//    console.log(`setSessionActive ${boo}`);
-    sessionActive = boo;
-};
-const getShortPlayerID = (i) => {
-    return i.replace('player-', '');
-};
-const getFullPlayerID = (i) => {
-    let id = i;
-    if (i.indexOf('player-') > -1) {
-        id = 'player-' + i;
-    }
-    return id;
-};
-const minifyPlayerID = (id) => {
-    return id.replace('player-', '');
-};
-const startNewSession = (cb) => {
-    let i = 0;
-    let a = [];
-    let sesh = new Session(1234);
-    sesh.stakeholders = setupStakeholders();
-//    sesh.playersMap = new Map();
-    sesh.players = {};
-    // copy the list of players and thoroughly randomise it:
-    for (let [k, v] of players) {
-        k = minifyPlayerID(k);
-        sesh.players[k] = Object.assign({}, v);
-        delete sesh.players[k].socket;
-        a.push(k);
-    };
-    for (i = 0; i < 10; i++) {
-        a.sort(() => {return Math.round(Math.random() * 2) - 1})
-    };
-    // Loop through the stakeholders adding users from the list until no more remain:
-    let brake = 3000;
-    console.log(a.length);
-    console.log(sesh);
-    while (a.length > 0 && brake-- > 0) {
-//    console.log('########################################## HERE' + brake);
-        for (i in sesh.stakeholders) {
-            console.log(i);
-            if (a.length > 0) {
-                var p = minifyPlayerID(a.pop());
-                sesh.players[p].stakeholder = sesh.stakeholders[i];
-                sesh.stakeholders[i].team.push(p);
-            }
-        }
-    }
-
-    for (i in sesh.stakeholders) {
-        let s = sesh.stakeholders[i];
-        if (s.active === 1) {
-            s.active = [s.team[Math.floor(Math.random() * s.team.length)]];
-        }
-        if (s.active < 0) {
-            s.active = s.team.slice(0);
-        }
-    }
-    setSessionActive(true);
-    delete sesh.players;
-    session = sesh;
-    if (cb) {
-        cb(sesh);
-    }
-    return sesh;
-};
-const endSession = () => {
-    setSessionActive(false);
-};
-const getSession = () => {
-    let s = false;
-    if (sessionActive) {
-        s = session;
-    }
-//    console.log('request to getSession');
-    return s;
-};
-const startApp = () => {
-    console.log('all ready, we can start');
-    gamedata = processData(require('./data/gamedata.json'));
-    int = setInterval(waitForMaster, 500);
-};
-const init = () => {
-//    console.log('init');
-    // first clear away any old logs (after copying them for reference)
-    // Then fire 'startApp' to kick everything off
-    clearLogs(startApp);
-    setTimeout(function () {
-//        gamedata = processData(require('./data/gamedata.json'));
-//        int = setInterval(waitForMaster, 500);
-    }, 1000);
-};
-const depart = () => {
-    console.log('get out of here');
-    clearLogs();
-};
-
-
-var masterTimer = (function () {
-    var P = ["\\", "|", "/", "-"];
-    var x = 0;
-    return setInterval(function () {
-        process.stdout.write("\rwaiting for master " + P[x++]);
-        x &= 3;
-    }, 250);
-})();
+let gamedata = null;
+let sessionID = null;
+let playersBasic = {};
+let session = null;
 
 class Player {
     constructor(id) {
@@ -268,160 +66,236 @@ class Stakeholder {
 };
 
 
+
+const writeLogFile = (id, c, msg) => {
+    let f = `../logs/log.${logCount++}.${id}.json`;
+    if (msg) {
+        c = Object.assign({msg: msg}, c);
+    }
+    fs.writeFile(f, JSON.stringify(c, null, 4), () => {console.log(`log written: ${f}`)})
+};
+const consoleLog = (m) => {
+    const stack = new Error().stack;
+    const l = stack.split('\n')[3].split(':')[2];
+//    console.log(stack.split('\n')[3].split(':'));
+    console.log(`Line ${l}: ${m}`);
+//    console.log(m);
+    io.emit('logoutput', `Line ${l}: ${m}`);
+}
+const clearLogs = (cb) => {
+    let p = '../logs';
+    fs.readdir(p, (err, files) => {
+        let l = files.length
+        if (l === 0) {
+            if (cb) {
+                cb();
+            }
+        }
+        if (err) throw err;
+        for (const f of files) {
+            let d = `${p}/${f}`;
+            fs.copyFileSync(d, d.replace('logs/', 'logscopy/'));
+            fs.unlink(d, (e) => {
+                if (l-- === 1) {
+                    if (cb) {
+                        cb();
+                    }
+                }
+                if (e) throw e;
+            })
+        }
+    });
+};
+const processData = (d) => {
+    let s = d.stakeholders;
+    let f = d.defaults;
+    let m = d.map;
+    for (var i in s) {
+        s[i].stub = s[i].title.toLowerCase().replace(/ /gm, '_');
+        for (var j in f) {
+            if (!s[i].hasOwnProperty(j)) {
+                s[i][j] = f[j];
+            }
+        }
+    }
+    for (var i in m) {
+        m[m[i]] = i;
+    }
+    writeLogFile('data', d, 'gameData prepared by processData method');
+    return d;
+};
+const roundNum = (n) => {
+    let r = n;
+    if (n < 10) {
+        r = '0' + n;
+    }
+    return r;
+};
+const getDayCode = (d) => {
+    return `${d.getFullYear()}${roundNum(d.getMonth() + 1)}${roundNum(d.getDate())}`;
+};
+const updateTimer = () => {
+//    console.log('ut');
+    let d = new Date();
+    let t = `${getDayCode(d)} ${d.getHours()}:${d.getMinutes()}:${roundNum(d.getSeconds())}`;
+    io.emit('onUpdateTimer', t);
+};
+const setSessionID = () => {
+    var d = new Date();
+    sessionID = getDayCode(d) + '4';
+};
+const getSessionID = () => {
+    return sessionID;
+};
+const requestSession = (o) => {
+//    consoleLog(Object.keys(playersBasic).length);
+//    io.emit('onRequestSession', o.sessionID === getSessionID() ? `sustain${getSessionID()}` : false);
+//    if the session ID passed matches the session ID for the app, return the passed player id for verification, otherwise return false:
+    io.emit('onRequestSession', {player: o.player, success: o.session === getSessionID()});
+};
+const terminateSession = () => {
+    playersBasic = {};
+    io.emit('terminateSession');
+};
+const getPlayerPack = (cb) => {
+    // return all available initial stuff to a newly connected player client
+//    console.log(`playersBasic ${JSON.stringify(playersBasic)}`);
+//    console.log(`playersBasic type: ${typeof(playersBasic)}`);
+    let o = {
+        isDev: isDev,
+        sessionID: isDev ? getSessionID() : "ha, nice try",
+        playersBasic: playersBasic,
+        gamedata: gamedata
+    }
+    cb(o);
+};
+const getGameMin = (cb) => {
+    // Prepare & return a minimal game summary for localStorage
+    let o = {p: playersBasic};
+    cb(o);
+};
+const initSession = () => {
+    setSessionID();
+    app.get(`/sustain${getSessionID()}`, (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'player.html'));
+    });
+    setInterval(updateTimer, 1000);
+}
+const initApp = () => {
+    consoleLog('init app');
+    gamedata = processData(require('./data/gamedata.json'));
+    io.emit('serverStartup');
+//    initSession();
+};
+const exitApp = () => {
+    // This is called when the server shuts down & should not be explicitly called from within the app
+    io.emit('serverShutdown');
+    getPlayerPack(function (o) {
+        io.emit('updateFull', o);
+    })
+    clearLogs();
+};
+
+//io.use((server, next) => {
+//
+//});
+
 io.on('connection', (socket) => {
-    socket.on('areWeDev', (cb) => {
-        cb(isDev);
-        return isDev;
-    });
-    socket.on('methodReady', (id) => {
-        console.log(`methodReady: ${id}`)
-    });
-    socket.on('nowIAmTheMaster', () => {
-        master = socket.id;
-        io.emit('masterConnected', master);
+//    console.log(`first connection: ${socket.id}`);
+//    console.log('socket.gameInfo');
+//    console.log(socket.gameInfo);
+    socket.on('customDataEvent', (customData) => {
+        socket.customData = customData;
+//        console.log(`socket connected with role ${socket.customData.role} ${socket.id}`);
+//        if () {}
     });
     socket.on('addNewPlayer', (id, callback) => {
-//        console.log('add new player called');
-        const player = new Player(id);
-        player.socket = socket;
-        players.set(id, player);
-        if (master !== null) {
-            io.emit('newPlayer', id);
+        id = id.replace(gamedata.prefixes.player, '')
+        console.log(`addNewPlayer: ${id}`);
+//        console.log(gamedata);
+        if (!playersBasic.hasOwnProperty(id)) {
+            playersBasic[id] = {};
         }
+//        const player = new Player(id);
+//        player.socket = socket;
+//        players.set(id, player);
+//        if (master !== null) {
+//            io.emit('newPlayer', id);
+//        }
+        io.emit('onAddNewPlayer', playersBasic);
         if (callback) {
             if (typeof (callback) === 'function') {
+//                callback(getPlayerPack());
                 callback({
-                    master: master,
-                    session: getSession()
+                    playersBasic: playersBasic
+//                    master: master,
+//                    session: getSession(),
+//                    gamedata: gamedata
                 })
             }
         }
     });
-    const removal = () => {
-        let disconnectedPlayer = null;
-        for (const [playerId, player] of players.entries()) {
-            if (player.socket.id === socket.id) {
-                disconnectedPlayer = player;
-                break;
-            }
-        }
-        if (disconnectedPlayer) {
-            players.delete(disconnectedPlayer.id);
-            onPlayersUpdate();
-        }
-    };
-    const removalV1 = () => {
-        // Remove the player ID from the 'players' map upon disconnection
-        for (const [playerId, playerSocket] of players.entries()) {
-            if (playerSocket === socket) {
-                players.delete(playerId);
-                break;
-            }
-        }
-        const playerIds = Array.from(players.keys());
-        console.log('emitting getPlayers');
-        io.emit('getPlayers');
-        io.emit('updatePlayers', playerIds);
-    };
-    const onPlayersUpdate = () => {
-//        console.log('new onPLayersUpdate method');
-        const playerIds = Array.from(players.keys());
-//        io.emit('onGetPlayerIDs', playerIds);
-        const thePlayers = Array.from(players.values());
-        thePlayers.forEach((s, i) => {
-//            console.log(i, s.socket.connected);
-//            console.log(s);
-            thePlayers[i] = {id: s.id, active: s.socket.connected};
-        });
-        io.emit('onGetPlayers', thePlayers);
-    };
-    socket.on('remove', () => {
-        removal();
+    socket.on('getBasicPlayers', (cb) => {
+        cb(playersBasic);
     });
-    socket.on('disconnect', () => {
-        // Find the player with the corresponding socket.id in the 'players' map
-        let disconnectedPlayer = null;
-        for (const [playerId, player] of players.entries()) {
-            if (player.socket.id === socket.id) {
-                disconnectedPlayer = player;
-                break;
-            }
-        }
-        if (disconnectedPlayer) {
-            // Perform any actions required for the disconnected player
-            disconnectedPlayer.handleDisconnect();
-            // Remove the player from the 'players' map
-//            players.delete(disconnectedPlayer.id);
-            onPlayersUpdate();
-        } else {
-            console.log('no player found');
-        }
-    });
-    socket.on('disconnectNOT', () => {
-        const player = players.get(socket.id);
-//        console.log(`socket.id: ${socket.id}`);
-//        console.log(players);
-        console.log(`disconnecting ${player}`)
-        if (player) {
-            player.handleDisconnect();
-        }
-    });
-    socket.on('getPlayerIDs', () => {
-        // Send the list of player IDs to the requesting client
-        onPlayersUpdate();
-
-    });
-    socket.on('playerPing', (id) => {
-        const targ = players.get(id).socket;
-        if (targ) {
-            targ.emit('ping');
-        }
-    });
-    socket.on('playerReset', (id) => {
-        const targ = players.get(id).socket;
-        if (targ) {
-            targ.emit('reset');
+    socket.on('getGameData', (cb) => {
+        if (cb) {
+            cb(gamedata);
         }
     });
     socket.on('startNewSession', () => {
-        console.log('startNewSession');
         var s = startNewSession();
-//        console.log('send the gamedata');
-//        console.log(gamedata);
-        writeLogFile('gameDataAsSent', gamedata, 'startNewSession emit method');
-        io.emit('onNewSession', {session: s, gamedata: gamedata});
-//        var s2 = startNewMiniSession();
+//        io.emit('onNewSession', {session: s, gamedata: gamedata, players: playersObj});
     });
-    socket.on('endSession', () => {
-        endSession();
+    socket.on('areWeDev', (cb) => {
+        cb(isDev);
     });
-    socket.on('castVote', (s, src) => {
-        session.stakeholders[s].voteObj.total += 1;
-        session.players[src].stakeholder.votes -= 1;
-//        console.log(session.players[src]);
-        io.emit('onNewSession', session);
-//        console.log(socket);
+    socket.on('getPlayerPack', (cb) => {
+//        console.log('call to getPlayerPack');
+        getPlayerPack(cb);
     });
-    socket.on('getSession', (cb) => {
-        if (cb) {
-            cb(session);
-        } else {
-            console.log(`This method won't work without a callback`);
+    socket.on('updateSession', () => {
+//        console.log('onUpdateSession');
+        io.emit('onUpdateSession');
+    });
+    socket.on('requestSession', (id) => {
+//        console.log(`request session with ID ${id}`);
+        requestSession(id);
+    });
+    socket.on('adminTerminateSession', () => {
+        terminateSession();
+    });
+    socket.on('getPlayerIDs', (cb) => {
+        cb(playersBasic);
+    });
+    socket.on('getGameMin', (cb) => {
+        getGameMin(cb);
+    });
+    socket.on('storedGameFound', (d) => {
+        console.log(`stored game found with ${Object.keys(d.p).length} elements`);
+//        console.log(d);
+        if (typeof(d) === 'string') {
+            d = JSON.parse(d);
         }
+//        console.log(d.p);
+        playersBasic = Object.assign({}, d.p);
+        io.emit('onStoredGameFound');
+//        console.log(`playersBasic ${Object.assign({}, d.p)}`);
     });
 });
 
 
 // Code to run when the server app shuts down:
 process.on('exit', () => {
-    depart();
+    exitApp();
 });
 process.on('SIGINT', () => {
-    depart();
+    exitApp();
 });
 process.on('SIGTERM', () => {
-    depart();
+    exitApp();
 });
+
 
 // Serve the static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -430,13 +304,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-app.get('/player', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'player.html'));
+//app.get('/player', (req, res) => {
+//    res.sendFile(path.join(__dirname, 'public', 'player.html'));
+//});
+//    app.get('/sustain', (req, res) => {
+//        res.sendFile(path.join(__dirname, 'public', 'player.html'));
+//    });
+app.get('/admin', (req, res) => {
+//    res.render('admin');
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+app.get('/playersBasic', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'playersBasic.html'));
+});
+app.get('/gamedata', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'gamedata.html'));
 });
 app.get('/session', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'session.html'));
 });
-
+app.get('/test', (req, res) => {
+    const d = {title: 'awesome', answer: 'Oh hell yes'};
+    res.render('test', d);
+});
 app.get('/download-csv', (req, res) => {
     console.log('go down the route');
     const csvWriterInstance = csvWriter({
@@ -462,9 +352,17 @@ app.get('/download-csv', (req, res) => {
             res.status(500).send('Internal Server Error - route not found');
         });
 });
+app.get('/newlogin', (req, res) => {
+    const d = {
+        value: isDev ? getSessionID : 123456
+    }
+    res.render('newlogin', d); // Render the login template
+});
+app.get('/game', (req, res) => {
+    res.render('game'); // Render the game template
+});
 
-const port = 3000;
 server.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
-    init();
+    initApp();
 });

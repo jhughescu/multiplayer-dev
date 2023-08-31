@@ -1,0 +1,196 @@
+
+
+
+
+
+DON'T EDIT ME I HAVE TURNED INTO A TEMPLATE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+        <script src="/socket.io/socket.io.js"></script>
+<!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
+    <link rel='stylesheet' href='css/basics.css'>
+    <link rel='stylesheet' href='css/master.css'>
+</head>
+
+<body>
+    <h1>Master</h1>
+    <p>This is the master client, it listens for player connections</p>
+    <p id='message'></p>
+    <button id='startSession'>Start Session</button>
+    <button id='endSession'>End Session</button>
+    <div id='players'></div>
+
+    <div>
+    </div>
+
+
+    <script>
+        const socket = io();
+        const PINGBTN = `pingbtn-`;
+        const RESETBTN = `resetbtn-`;
+
+        socket.on('connect', () => {
+            socket.emit('nowIAmTheMaster');
+        });
+        socket.on('onPlayerConnect', (msg) => {
+            onPlayerConnect(msg);
+        });
+        socket.on('onGetPlayers', (msg) => {
+//            console.log('I hear onGetPlayers')
+            onGetPlayers(msg);
+        });
+        socket.on('onGetPlayerIDs', (msg) => {
+//            console.log('I hear onGetPlayerIDs')
+            onGetPlayerIDs(msg);
+        });
+        socket.on('updatePlayers', (arr) => {
+//            console.log('I hear updatePlayers')
+            onGetPlayerIDs(arr);
+        });
+        socket.on('newPlayer', (players) => {
+            newPlayer(players);
+        });
+        const buttonSetup = () => {
+            let b = document.getElementsByClassName('pingBtn');
+            [...b].forEach((bu) => {
+                bu.addEventListener('click', (evt) => {
+                    let id = evt.target.id.replace(PINGBTN, '');
+                    socket.emit('playerPing', id);
+                });
+            });
+            b = document.getElementsByClassName('resetBtn');
+            [...b].forEach((bu) => {
+                bu.addEventListener('click', (evt) => {
+                    let id = evt.target.id.replace(RESETBTN, '');
+                    socket.emit('playerReset', id);
+                });
+            });
+        };
+        let ssb = document.getElementById('startSession');
+        ssb.addEventListener('click', (evt) => {
+            console.log('cow');
+            socket.emit('startNewSession', function (s) {
+                console.log('mooooooooooooooooooooo');
+            });
+        });
+        let esb = document.getElementById('endSession');
+        esb.addEventListener('click', (evt) => {
+            socket.emit('endSession');
+        });
+        const playerDisplay = (p, i) => {
+            var e = document.getElementById('players');
+            var s = '';
+            s += `<div class='${p.active ? 'active' : 'inactive'}'>${p.id} <button class="pingBtn" id="${PINGBTN}${p.id}">Ping</button>`;
+            s += `<button class="resetBtn" id="${RESETBTN}${p.id}">Reset</button></div>`;
+            e.innerHTML += s;
+        };
+        const clearPlayers = () => {
+            document.getElementById('players').innerHTML = ``;
+        };
+        const onPlayerConnect = (msg) => {
+            document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;
+        };
+        const onGetPlayers = (arr) => {
+//            console.log('onGetPlayers');
+//            console.log(arr);
+            clearPlayers();
+            document.getElementById('players').innerHTML = '<b>players:</b>';
+            for (var i = 0; i < arr.length; i++) {
+                playerDisplay(arr[i], i);
+//                console.log(players);
+//                console.log(arr[i]);
+            }
+            buttonSetup();
+        };
+        const onGetPlayerIDsOld = (arr) => {
+            console.log('onGetPlayerIDs');
+            console.log(arr);
+            clearPlayers();
+            document.getElementById('players').innerHTML = '<b>players:</b>';
+            for (var i = 0; i < arr.length; i++) {
+                playerDisplay(arr[i], i);
+//                console.log(players);
+                console.log(arr[i]);
+            }
+            buttonSetup();
+        };
+        const newPlayer = (id) => {
+            socket.emit('getPlayerIDs');
+        };
+        const updateSession = () => {
+            socket.emit('updateSession');
+        };
+        window.updateSession = updateSession;
+        socket.emit('getPlayerIDs');
+//        socket.emit('getPlayers');
+
+    </script>
+</body>
+
+</html>

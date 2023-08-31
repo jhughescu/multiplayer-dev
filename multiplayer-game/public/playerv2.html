@@ -40,7 +40,7 @@
             } else {
                 s.removeClass('animate-flicker');
             }
-        };
+        }
         const getStorageID = () => {
             return `player${getHash()}ID`
         };
@@ -84,16 +84,27 @@
             document.title = id;
             $('h2').html(`id: ${id}`);
             socket.emit('addNewPlayer', id, (response) => {
+//                console.log('newPlayer callback, response:');
 //                console.log(response);
                 if (response.master === null) {
                     setStatus('waiting for master', true);
                 } else {
                     setStatus(`master is ${response.master}`, false);
                 }
-                if (response.session) {
-                    joinSession(response.session);
-                } else {
+//                if (response.session) {
+//                    console.log(response.session);
+//                } else {
 //                    console.log('no session');
+//                }
+//                if (response.gamedata) {
+//                    console.log(response.gamedata);
+//                } else {
+//                    console.log('no gamedata');
+//                }
+                if (response.gamedata && response.session && response.players) {
+                    joinSession({gamedata: response.gamedata, session: response.session, players: response.players});
+                } else {
+                    console.log('no gamedata OR no session OR no players');
                 }
             });
         };
@@ -120,11 +131,34 @@
             if (sesh.stakeholders[s.stub].votes < 1) {
                 vb.attr('disabled', true);
             }
-        }
+        };
+        const prepareModel = (gamepack) => {
+            let s = gamepack.session;
+            let st = gamepack.session.stakeholders;
+            let d = gamepack.gamedata;
+            let k = null;
+            for (var i in st) {
+                st[d.map[i]] = st[i];
+                for (k in st[i]) {
+                    if (d.map.hasOwnProperty(k)) {
+                        st[i][d.map[k]] = st[i][k];
+                        delete st[i][k];
+                    }
+                    if (typeof(st[i][k]) === 'object' && st[i][k].hasOwnProperty('length')) {
+                        for (var m = 0; m < st[i][k].length; m++) {
+                            st[i][k][m] = 'player-' + st[i][k][m];
+                        }
+                    }
+                }
+            }
+            console.log(s);
+            return s;
+        };
         const joinSession = (gamepack) => {
-            console.log(gamepack.session);
-            console.log(gamepack.gamedata);
-            let sesh = gamepack.session;
+//            console.log(gamepack.session);
+//            console.log(gamepack.gamedata);
+//            let sesh = gamepack.session;
+            let sesh = prepareModel(gamepack);
             let id = getID();
             let s = sesh.players[getID()].stakeholder;
             let active = s.active[0] === id || s.active.length === s.team.length;

@@ -1,0 +1,7 @@
+table {
+    padding-left: 50px;
+}
+td:nth-child(2) {
+    padding-left: 30px;
+    color: #c4edff;
+}

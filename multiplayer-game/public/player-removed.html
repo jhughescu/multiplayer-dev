@@ -1,0 +1,159 @@
+
+
+
+
+
+DON'T EDIT ME I HAVE TURNED INTO A TEMPLATE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sustainability</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel='stylesheet' href='css/player.css'>
+</head>
+
+<body>
+    <h1>Player</h1>
+    <h2></h2>
+    <div>
+        <p id='temp'></p>
+        <!--    <p>This is the player client, it requires a master before it can init</p>    -->
+        <p id='stakeholder'></p>
+        <p id='active'></p>
+        <p id='message'></p>
+        <p id='votesRemaining'></p>
+        <p id='votesReceived'></p>
+        <p id='status' style='display: none;'></p>
+        <div id='voting' style='display: none;'>
+        voting booth:
+
+    </div>
+    </div>
+    <div>
+    </div>
+    <script>
+        const socket = io();
+        const getHash = () => {
+            let h = '';
+            if (window.location.hash && isDev) {
+                if (window.location.hash.substr(0, 1) === '#') {
+                    h = window.location.hash.replace('#', '');
+                }
+            }
+            return h;
+        };
+        const getStorageID = () => {
+            return `player${getHash()}ID`
+        };
+        const generateID = () => {
+            let id = 'player-' + Math.round(Math.random() * 1000);
+            if (window.location.hash) {
+                if (window.location.hash.substr(0, 1) === '#') {
+                    id = id.replace('-', '-' + window.location.hash.replace('#', '') + '-');
+                }
+            }
+            return id;;
+        };
+        const getID = () => {
+            let id = localStorage.getItem(getStorageID());
+            if (!id) {
+                id = generateID();
+                localStorage.setItem(getStorageID(), id);
+            }
+            return id;
+        };
+        const newPlayer = () => {
+            let id = getID();
+            storageID = getStorageID();
+            document.title = id;
+            $('h2').html(`id: ${id}`);
+            socket.emit('addNewPlayer', id, (response) => {
+                if (response.master === null) {
+                    console.log('waiting for master', true);
+                } else {
+                    console.log(`master is ${response.master}`, false);
+                }
+                if (response.gamedata && response.session && response.players) {
+                    joinSession({gamedata: response.gamedata, session: response.session, players: response.players});
+                } else {
+                    console.log('no gamedata OR no session OR no players');
+                }
+            });
+        };
+        socket.on('connect', () => {
+            socket.emit('areWeDev', (m) => {
+                isDev = m;
+                newPlayer();
+                console.log(`connecting to the server, isDev? ${isDev}`);
+            });
+        });
+        socket.on('onUpdateTimer', (t) => {
+            console.log('get it here')
+            let p = $('#temp');
+            p.html(t);
+        });
+    </script>
+</body>
+
+</html>

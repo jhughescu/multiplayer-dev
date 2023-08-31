@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sustainability Game</title>
+<!--    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>-->
+        <script src="/socket.io/socket.io.js"></script>
+<!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
+    <link rel='stylesheet' href='css/basics.css'>
+</head>
+
+<body>
+    <h1>Sustainability Game</h1>
+    <p>If you have a session ID you can enter it here to join the session</p>
+    <input type='number' id='seshnum' placeholder='enter code...'><button id='enter'>Join session</button>
+    <script>
+        const socket = io();
+        const butt = document.getElementById('enter');
+        const txt = document.getElementById('seshnum');
+        const onRequestSession = (boo) => {
+            if (boo) {
+                window.location = boo;
+            } else {
+                alert(`no session with ID ${txt.value} exists`)
+            }
+        }
+        const requestSession = () => {
+            socket.emit('requestSession', txt.value);
+        };
+        butt.addEventListener('click', () => {
+            requestSession();
+        });
+        txt.addEventListener('keydown', (ev) => {
+            if (ev.keyCode === '13') {
+                requestSession();
+            }
+        });
+        socket.on('onRequestSession', (boo) => {
+            onRequestSession(boo);
+        })
+        txt.focus();
+    </script>
+</body>
+</html>
