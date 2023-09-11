@@ -1,0 +1,38 @@
+{
+    "msg": "this is the playersDetail object after being updated with data retrieved from localStorage",
+    "3-448": {
+        "id": "3-448",
+        "socket": "5SiaQze_QbPQ1IFnAAAC",
+        "enrolled": true,
+        "active": true,
+        "stakeholder": null
+    },
+    "6-990": {
+        "id": "6-990",
+        "socket": "fKQY4rYIYgGpu7w1AAAK",
+        "enrolled": false,
+        "active": true,
+        "stakeholder": null
+    },
+    "7-444": {
+        "id": "7-444",
+        "socket": "JyE5lPs_XwN7AAQ4AAAL",
+        "enrolled": false,
+        "active": true,
+        "stakeholder": null
+    },
+    "2-266": {
+        "id": "2-266",
+        "socket": "SaFyiNGRvPvD4NyLAAAM",
+        "enrolled": true,
+        "active": true,
+        "stakeholder": null
+    },
+    "8-278": {
+        "id": "8-278",
+        "socket": "lYTLMruhYE-BXyQ0AAAO",
+        "enrolled": true,
+        "active": true,
+        "stakeholder": null
+    }
+}

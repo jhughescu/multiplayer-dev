@@ -17,11 +17,11 @@ templates['admin'] = template({"1":function(container,depth0,helpers,partials,da
         return undefined
     };
 
-  return "<!DOCTYPE html>\r\n<html lang=\"en\">\r\n\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    <title>Master</title>\r\n    <script src=\"https://code.jquery.com/jquery-3.7.0.js\" integrity=\"sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=\" crossorigin=\"anonymous\"></script>\r\n        <script src=\"/socket.io/socket.io.js\"></script>\r\n<!--    <script src=\"https://cdn.socket.io/4.5.4/socket.io.min.js\"></script>-->\r\n    <link rel='stylesheet' href='css/basics.css'>\r\n    <link rel='stylesheet' href='css/master.css'>\r\n</head>\r\n\r\n<body>\r\n    <h1>Master "
+  return "<!DOCTYPE html>\n<html lang=\"en\">\n\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Master</title>\n    <script src=\"https://code.jquery.com/jquery-3.7.0.js\" integrity=\"sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=\" crossorigin=\"anonymous\"></script>\n        <script src=\"/socket.io/socket.io.js\"></script>\n<!--    <script src=\"https://cdn.socket.io/4.5.4/socket.io.min.js\"></script>-->\n    <link rel='stylesheet' href='css/basics.css'>\n    <link rel='stylesheet' href='css/master.css'>\n</head>\n\n<body>\n    <h1>Master "
     + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"me") || (depth0 != null ? lookupProperty(depth0,"me") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(alias1,{"name":"me","hash":{},"data":data,"loc":{"start":{"line":16,"column":15},"end":{"line":16,"column":21}}}) : helper)))
-    + "</h1>\r\n    <p>This is the master client, it listens for player connections</p>\r\n    <p id='message'></p>\r\n    <button id='startSession'>Start Session</button>\r\n    <button id='endSession'>End Session</button>\r\n    <div id='players'></div>\r\n\r\n    <div>\r\n        <div id='controlPaanel'>\r\n            "
+    + "</h1>\n    <p>This is the master client, it listens for player connections</p>\n    <p id='message'></p>\n    <button id='startSession'>Start Session</button>\n    <button id='endSession'>End Session</button>\n    <div id='players'></div>\n\n    <div>\n        <div id='controlPaanel'>\n            "
     + ((stack1 = lookupProperty(helpers,"with").call(alias1,(depth0 != null ? lookupProperty(depth0,"playersBasic") : depth0),{"name":"with","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":25,"column":12},"end":{"line":25,"column":60}}})) != null ? stack1 : "")
-    + "\r\n        </div>\r\n    </div>\r\n\r\n\r\n    <script>\r\n        const socket = io();\r\n        const PINGBTN = `pingbtn-`;\r\n        const RESETBTN = `resetbtn-`;\r\n\r\n        socket.on('connect', () => {\r\n            socket.emit('nowIAmTheMaster');\r\n        });\r\n        socket.on('onPlayerConnect', (msg) => {\r\n            onPlayerConnect(msg);\r\n        });\r\n        socket.on('onGetPlayers', (msg) => {\r\n//            console.log('I hear onGetPlayers')\r\n            onGetPlayers(msg);\r\n        });\r\n        socket.on('onGetPlayerIDs', (msg) => {\r\n//            console.log('I hear onGetPlayerIDs')\r\n            onGetPlayerIDs(msg);\r\n        });\r\n        socket.on('updatePlayers', (arr) => {\r\n//            console.log('I hear updatePlayers')\r\n            onGetPlayerIDs(arr);\r\n        });\r\n        socket.on('newPlayer', (players) => {\r\n            newPlayer(players);\r\n        });\r\n        const buttonSetup = () => {\r\n            let b = document.getElementsByClassName('pingBtn');\r\n            [...b].forEach((bu) => {\r\n                bu.addEventListener('click', (evt) => {\r\n                    let id = evt.target.id.replace(PINGBTN, '');\r\n                    socket.emit('playerPing', id);\r\n                });\r\n            });\r\n            b = document.getElementsByClassName('resetBtn');\r\n            [...b].forEach((bu) => {\r\n                bu.addEventListener('click', (evt) => {\r\n                    let id = evt.target.id.replace(RESETBTN, '');\r\n                    socket.emit('playerReset', id);\r\n                });\r\n            });\r\n        };\r\n        let ssb = document.getElementById('startSession');\r\n        ssb.addEventListener('click', (evt) => {\r\n            console.log('cow');\r\n            socket.emit('startNewSession', function (s) {\r\n                console.log('mooooooooooooooooooooo');\r\n            });\r\n        });\r\n        let esb = document.getElementById('endSession');\r\n        esb.addEventListener('click', (evt) => {\r\n            socket.emit('adminTerminateSession');\r\n        });\r\n        const playerDisplay = (p, i) => {\r\n            var e = document.getElementById('players');\r\n            var s = '';\r\n            s += `<div class='${p.active ? 'active' : 'inactive'}'>${p.id} <button class=\"pingBtn\" id=\"${PINGBTN}${p.id}\">Ping</button>`;\r\n            s += `<button class=\"resetBtn\" id=\"${RESETBTN}${p.id}\">Reset</button></div>`;\r\n            e.innerHTML += s;\r\n        };\r\n        const clearPlayers = () => {\r\n            document.getElementById('players').innerHTML = ``;\r\n        };\r\n        const onPlayerConnect = (msg) => {\r\n            document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;\r\n        };\r\n        const onGetPlayers = (arr) => {\r\n//            console.log('onGetPlayers');\r\n//            console.log(arr);\r\n            clearPlayers();\r\n            document.getElementById('players').innerHTML = '<b>players:</b>';\r\n            for (var i = 0; i < arr.length; i++) {\r\n                playerDisplay(arr[i], i);\r\n//                console.log(players);\r\n//                console.log(arr[i]);\r\n            }\r\n            buttonSetup();\r\n        };\r\n        const onGetPlayerIDsOld = (arr) => {\r\n            console.log('onGetPlayerIDs');\r\n            console.log(arr);\r\n            clearPlayers();\r\n            document.getElementById('players').innerHTML = '<b>players:</b>';\r\n            for (var i = 0; i < arr.length; i++) {\r\n                playerDisplay(arr[i], i);\r\n//                console.log(players);\r\n                console.log(arr[i]);\r\n            }\r\n            buttonSetup();\r\n        };\r\n        const newPlayer = (id) => {\r\n            socket.emit('getPlayerIDs');\r\n        };\r\n        const updateSession = () => {\r\n            socket.emit('updateSession');\r\n        };\r\n        window.updateSession = updateSession;\r\n        socket.emit('getPlayerIDs');\r\n//        socket.emit('getPlayers');\r\n\r\n    </script>\r\n</body>\r\n\r\n</html>\r\n";
+    + "\n        </div>\n    </div>\n\n\n    <script>\n        const socket = io();\n        const PINGBTN = `pingbtn-`;\n        const RESETBTN = `resetbtn-`;\n\n        socket.on('connect', () => {\n            socket.emit('nowIAmTheMaster');\n        });\n        socket.on('onPlayerConnect', (msg) => {\n            onPlayerConnect(msg);\n        });\n        socket.on('onGetPlayers', (msg) => {\n//            console.log('I hear onGetPlayers')\n            onGetPlayers(msg);\n        });\n        socket.on('onGetPlayerIDs', (msg) => {\n//            console.log('I hear onGetPlayerIDs')\n            onGetPlayerIDs(msg);\n        });\n        socket.on('updatePlayers', (arr) => {\n//            console.log('I hear updatePlayers')\n            onGetPlayerIDs(arr);\n        });\n        socket.on('newPlayer', (players) => {\n            newPlayer(players);\n        });\n        const buttonSetup = () => {\n            let b = document.getElementsByClassName('pingBtn');\n            [...b].forEach((bu) => {\n                bu.addEventListener('click', (evt) => {\n                    let id = evt.target.id.replace(PINGBTN, '');\n                    socket.emit('playerPing', id);\n                });\n            });\n            b = document.getElementsByClassName('resetBtn');\n            [...b].forEach((bu) => {\n                bu.addEventListener('click', (evt) => {\n                    let id = evt.target.id.replace(RESETBTN, '');\n                    socket.emit('playerReset', id);\n                });\n            });\n        };\n        let ssb = document.getElementById('startSession');\n        ssb.addEventListener('click', (evt) => {\n            console.log('cow');\n            socket.emit('startNewSession', function (s) {\n                console.log('mooooooooooooooooooooo');\n            });\n        });\n        let esb = document.getElementById('endSession');\n        esb.addEventListener('click', (evt) => {\n            socket.emit('adminTerminateSession');\n        });\n        const playerDisplay = (p, i) => {\n            var e = document.getElementById('players');\n            var s = '';\n            s += `<div class='${p.active ? 'active' : 'inactive'}'>${p.id} <button class=\"pingBtn\" id=\"${PINGBTN}${p.id}\">Ping</button>`;\n            s += `<button class=\"resetBtn\" id=\"${RESETBTN}${p.id}\">Reset</button></div>`;\n            e.innerHTML += s;\n        };\n        const clearPlayers = () => {\n            document.getElementById('players').innerHTML = ``;\n        };\n        const onPlayerConnect = (msg) => {\n            document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;\n        };\n        const onGetPlayers = (arr) => {\n//            console.log('onGetPlayers');\n//            console.log(arr);\n            clearPlayers();\n            document.getElementById('players').innerHTML = '<b>players:</b>';\n            for (var i = 0; i < arr.length; i++) {\n                playerDisplay(arr[i], i);\n//                console.log(players);\n//                console.log(arr[i]);\n            }\n            buttonSetup();\n        };\n        const onGetPlayerIDsOld = (arr) => {\n            console.log('onGetPlayerIDs');\n            console.log(arr);\n            clearPlayers();\n            document.getElementById('players').innerHTML = '<b>players:</b>';\n            for (var i = 0; i < arr.length; i++) {\n                playerDisplay(arr[i], i);\n//                console.log(players);\n                console.log(arr[i]);\n            }\n            buttonSetup();\n        };\n        const newPlayer = (id) => {\n            socket.emit('getPlayerIDs');\n        };\n        const updateSession = () => {\n            socket.emit('updateSession');\n        };\n        window.updateSession = updateSession;\n        socket.emit('getPlayerIDs');\n//        socket.emit('getPlayers');\n\n    </script>\n</body>\n\n</html>\n";
 },"usePartial":true,"useData":true});
 templates['game'] = template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
     var helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
@@ -31,9 +31,12 @@ templates['game'] = template({"compiler":[8,">= 4.3.0"],"main":function(containe
         return undefined
     };
 
-  return "<div id='game'>\r\n    <!--    <p>This is the player client, it requires a master before it can init</p>    -->\r\n    <p id='stakeholder'></p>\r\n    <p id='playerID'>playerID: "
+  return "<div id='game'>\n    <!--    <p>This is the player client, it requires a master before it can init</p>    -->\n    <p id='stakeholder'></p>\n    <p id='playerID'>playerID: "
     + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"playerID") || (depth0 != null ? lookupProperty(depth0,"playerID") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"playerID","hash":{},"data":data,"loc":{"start":{"line":4,"column":31},"end":{"line":4,"column":43}}}) : helper)))
-    + "</p>\r\n    <p id='gameTimer'></p>\r\n    <p id='active'></p>\r\n    <p id='message'></p>\r\n    <p id='votesRemaining'></p>\r\n    <p id='votesReceived'></p>\r\n    <p id='status' style='display: none;'></p>\r\n    <div id='voting' style='display: none;'>\r\n        voting booth:\r\n    </div>\r\n</div>\r\n<script>\r\n    console.log('i am him');\r\n</script>\r\n";
+    + "</p>\n    <p id='gameTimer'>timer:</p>\n    <p id='active'></p>\n    <p id='message'></p>\n    <p id='votesRemaining'></p>\n    <p id='votesReceived'></p>\n    <p id='status' style='display: none;'></p>\n    <div id='voting' style='display: none;'>\n        voting booth:\n    </div>\n</div>\n<script>\n//    console.log('i am him');\n</script>\n";
+},"useData":true});
+templates['intro'] = template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    return "Welcome to the sustainability game. There is currently no active session, please wait here.";
 },"useData":true});
 templates['newlogin'] = template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
     var helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
@@ -43,14 +46,34 @@ templates['newlogin'] = template({"compiler":[8,">= 4.3.0"],"main":function(cont
         return undefined
     };
 
-  return "<div id='login'>\r\n    <p>If you have a session ID you can enter it here to join the session</p>\r\n    <input type='number' id='seshnum' placeholder='enter code...' value='"
-    + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"value") || (depth0 != null ? lookupProperty(depth0,"value") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"value","hash":{},"data":data,"loc":{"start":{"line":3,"column":73},"end":{"line":3,"column":82}}}) : helper)))
-    + "'><button id='enter'>Join session</button>\r\n</div>\r\n<script>\r\n    console.log('i am him');\r\n    const requestSession = () => {\r\n        socket.emit('requestSession', {session: txt.val(), player: staticID});\r\n    };\r\n    butt = $('#enter');\r\n    txt = $('#seshnum');\r\n    butt.on('click', () => {\r\n        requestSession();\r\n    });\r\n    txt.on('keydown', (ev) => {\r\n        if (ev.keyCode === '13') {\r\n            requestSession();\r\n        }\r\n    });\r\n    txt.focus();\r\n</script>\r\n";
+  return "<div id='login'>\n    <p>If you have a session ID you can enter it here to join the session</p>\n    <input type='text' id='seshnum' placeholder='enter code...' value='"
+    + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"value") || (depth0 != null ? lookupProperty(depth0,"value") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"value","hash":{},"data":data,"loc":{"start":{"line":3,"column":71},"end":{"line":3,"column":80}}}) : helper)))
+    + "' oninput='validate'><button id='enter'>Join session</button>\n</div>\n<script>\n    validate = (inp) => {\n        inp.value = inp.value.replace(/[^0-9]/g, '');\n    };\n    requestSession = () => {\n        let o = {session: txt.val().replace(/ /gm, ''), player: staticID};\n//        console.log('request session:');\n//        console.log(o);\n        socket.emit('requestSession', o);\n    };\n    butt = $('#enter');\n    txt = $('#seshnum');\n    butt.on('click', () => {\n        requestSession();\n    });\n    txt.on('keydown', (ev) => {\n        if (ev.keyCode === '13') {\n            requestSession();\n        }\n    });\n    txt.focus();\n</script>\n";
 },"useData":true});
-templates['playersBasic'] = template({"1":function(container,depth0,helpers,partials,data) {
-    return "<p>"
-    + container.escapeExpression(container.lambda(depth0, depth0))
-    + "</p>\r\n";
+templates['outtro'] = template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    return "Thank you for participating, the session has now ended. Please close this browser window to exit.";
+},"useData":true});
+templates['playerList'] = template({"1":function(container,depth0,helpers,partials,data) {
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "        <tr><td>"
+    + alias4(((helper = (helper = lookupProperty(helpers,"id") || (depth0 != null ? lookupProperty(depth0,"id") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"id","hash":{},"data":data,"loc":{"start":{"line":7,"column":16},"end":{"line":7,"column":22}}}) : helper)))
+    + "</td><td class='"
+    + alias4(((helper = (helper = lookupProperty(helpers,"connected") || (depth0 != null ? lookupProperty(depth0,"connected") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"connected","hash":{},"data":data,"loc":{"start":{"line":7,"column":38},"end":{"line":7,"column":51}}}) : helper)))
+    + "'>"
+    + alias4(((helper = (helper = lookupProperty(helpers,"connected") || (depth0 != null ? lookupProperty(depth0,"connected") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"connected","hash":{},"data":data,"loc":{"start":{"line":7,"column":53},"end":{"line":7,"column":66}}}) : helper)))
+    + "</td><td class='"
+    + alias4(((helper = (helper = lookupProperty(helpers,"enrolled") || (depth0 != null ? lookupProperty(depth0,"enrolled") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"enrolled","hash":{},"data":data,"loc":{"start":{"line":7,"column":82},"end":{"line":7,"column":94}}}) : helper)))
+    + "'>"
+    + alias4(((helper = (helper = lookupProperty(helpers,"enrolled") || (depth0 != null ? lookupProperty(depth0,"enrolled") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"enrolled","hash":{},"data":data,"loc":{"start":{"line":7,"column":96},"end":{"line":7,"column":108}}}) : helper)))
+    + "</td><td><button class='pingBtn' id='pingbtn-"
+    + alias4(((helper = (helper = lookupProperty(helpers,"id") || (depth0 != null ? lookupProperty(depth0,"id") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"id","hash":{},"data":data,"loc":{"start":{"line":7,"column":153},"end":{"line":7,"column":159}}}) : helper)))
+    + "'>ping</button></td></tr>\r\n";
 },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
@@ -59,11 +82,30 @@ templates['playersBasic'] = template({"1":function(container,depth0,helpers,part
         return undefined
     };
 
-  return "list of player IDs\r\nThat's insane\r\n"
+  return "This will be a list of players\r\n\r\n<table>\r\n    <tbody>\r\n        <tr><th>player</th><th>connected</th><th>enrolled</th><th></th></tr>\r\n"
+    + ((stack1 = lookupProperty(helpers,"each").call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? lookupProperty(depth0,"players") : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":6,"column":8},"end":{"line":8,"column":17}}})) != null ? stack1 : "")
+    + "    </tbody>\r\n</table>";
+},"useData":true});
+templates['playersBasic'] = template({"1":function(container,depth0,helpers,partials,data) {
+    return "<p>"
+    + container.escapeExpression(container.lambda(depth0, depth0))
+    + "</p>\n";
+},"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "list of player IDs\nThat's insane\n"
     + ((stack1 = lookupProperty(helpers,"each").call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? lookupProperty(depth0,"ids") : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":3,"column":0},"end":{"line":5,"column":9}}})) != null ? stack1 : "");
 },"useData":true});
+templates['serverlost'] = template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    return "<div id='wrapper'>\r\n    server connection lost, please wait\r\n</div>";
+},"useData":true});
 templates['layouts/backup'] = template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
-    return "<!DOCTYPE html>\r\n<html>\r\n\r\n<head>\r\n    <title>Default HB template</title>\r\n</head>\r\n\r\n<body>\r\n    <h3>Oh no</h3>\r\n    <p>Looks like you are trying use a Handlebars template which doesn't exist. This is the backup template.</p>\r\n</body>\r\n\r\n</html>\r\n";
+    return "<!DOCTYPE html>\n<html>\n\n<head>\n    <title>Default HB template</title>\n</head>\n\n<body>\n    <h3>Oh no</h3>\n    <p>Looks like you are trying use a Handlebars template which doesn't exist. This is the backup template.</p>\n</body>\n\n</html>\n";
 },"useData":true});
 templates['partials/playersBasic'] = template({"1":function(container,depth0,helpers,partials,data) {
     return "Wow ";
@@ -75,7 +117,8 @@ templates['partials/playersBasic'] = template({"1":function(container,depth0,hel
         return undefined
     };
 
-  return "list of player IDs\r\nThat's insane\r\n"
-    + ((stack1 = lookupProperty(helpers,"each").call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? lookupProperty(depth0,"ids") : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":3,"column":0},"end":{"line":3,"column":26}}})) != null ? stack1 : "");
+  return "list of player IDs\nThat's insane\n"
+    + ((stack1 = lookupProperty(helpers,"each").call(depth0 != null ? depth0 : (container.nullContext || {}),(depth0 != null ? lookupProperty(depth0,"ids") : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":3,"column":0},"end":{"line":3,"column":26}}})) != null ? stack1 : "")
+    + "\n";
 },"useData":true});
 })();

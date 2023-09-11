@@ -46,7 +46,7 @@
 //            console.log(o);
             if (o.player === staticID) {
                 if (o.success) {
-                    refreshView();
+                    newPlayer();
                 } else {
                     alert(`no session with ID ${txt.value} exists`);
                 }
@@ -67,17 +67,21 @@
             return `player${getHash()}ID`
         };
         const generateID = () => {
-//            console.log(`gen id`);
             let id = 'player-' + Math.round(Math.random() * 1000);
             if (window.location.hash) {
                 if (window.location.hash.substr(0, 1) === '#') {
                     id = id.replace('-', '-' + window.location.hash.replace('#', '') + '-');
                 }
             }
+
+//            console.log(`%cgenerateID: ${id}`, `color: yellow;`);
             if (id) {
                 staticID = id;
+//                console.log(`%cgenerateID, staticID: ${staticID}`, `color: yellow;`);
+//                console.log(`%chere is the ONLY setting of localStorage data: ${staticID}`, 'color: red; background-color: black;');
                 localStorage.setItem(getStorageID(), JSON.stringify({id: staticID}));
             }
+            //            console.log(`generated id: ${id}`);
             return id;
         };
         const getID = () => {
@@ -89,7 +93,6 @@
                 id = generateID();
             } else {
                 // we have the local storage object, now we must extract the id from it:
-//                console.log('id:');
 //                console.log(id);
                 id = JSON.parse(id).id;
                 staticID = id;
@@ -125,17 +128,15 @@
 //            localStorage.setItem(getStorageID(), JSON.stringify({id: staticID, sessionID: sessionID}));
         };
         const kickout = () => {
-            renderTemplate('outtro', 'insertion');
-//            socket.emit('areWeDev', function (dev) {
-//                if (dev) {
+            socket.emit('areWeDev', function (dev) {
+                if (dev) {
 //                    console.log('kick me out & NOT reload');
                     // handle this via admin (localStorage.clear() removes all localStorage items)
 //                    localStorage.removeItem(getStorageID());
 //                    location.reload();
-//                    renderTemplate('intro', 'insertion');
-//                    renderTemplate('outtro', 'insertion');
-//                }
-//            });
+                    renderTemplate('intro', 'insertion');
+                }
+            });
         };
         const renderTemplate = (temp, targ, o) => {
             targ = '#' + targ;
@@ -152,7 +153,7 @@
             renderTemplate('game', 'insertion', o);
         };
         const onNewSession = () => {
-//            console.log(`onNewSession calls refreshView`);
+            console.log(`onNewSession calls refreshView`);
             refreshView('onNewSession');
         };
         const connectionWarning = (boo) => {
@@ -180,21 +181,7 @@
 //                connectionWarning(false);
 //            }, 2000);
         };
-        const onPinged = () => {
-//            $('H1').delay(10).fadeOut(50).fadeIn();
-            let t = document.title;
-            let n = 7;
-            document.title = `*${t}`;
-            let i = setInterval(() => {
 
-                $('H1').css('opacity', `${n%2 === 0 ? 1 : 0.3}`);
-                if (n-- === 0) {
-                    clearInterval(i);
-                    document.title = t;
-                }
-            }, 200);
-
-        };
         const init = () => {
 //            console.log('this is init ');
 //            let id = getID();
@@ -231,34 +218,41 @@
         };
         let currentState = null;
         const refreshViewCallback = (p) => {
+            // NOTE: isDev is key to all subsequent logic so the following line MUST come before all other methods
+//            console.log(`refreshViewCallback`);
+            isDev = p.isDev;
+            env = Object.assign({}, p);
             let id = getMinID();
+            clientData.id = id;
+            socket.emit('customDataEvent', clientData);
             let newPlayer = !p.playersBasic.hasOwnProperty(id);
             let enrolled = false;
+//            console.log(`my ID: ${id}`);
+//            console.log(p);
             if (currentState) {
                 let c = currentState !== JSON.stringify(p);
-//                console.log(`state changed? %c${c ? 'yes' : 'no'}`, `color: ${c ? 'green' : 'red'};`)
+                console.log(`state changed? %c${c ? 'yes' : 'no'}`, `color: ${c ? 'green' : 'red'};`)
             } else {
-//                console.log(`no currentState for comparison`);
+                console.log(`no currentState for comparison`);
             }
             currentState = JSON.stringify(p);
+//            console.log(currentState);
             if (p.hasOwnProperty('playersDetail')) {
                 if (p.playersDetail.hasOwnProperty(id)) {
+//                    console.log('my Player:');
+//                    console.log(p.playersDetail[id]);
+
                     enrolled = p.playersDetail[id].enrolled;
                 } else {
 //                    console.log(`%cno player with id ${id} found`, `color: red;`);
                 }
             }
-//            console.log(`p.sessionID: ${p.sessionID}`);
-//            console.log(`p.enrolled: ${p.enrolled}`);
             if (p.sessionID) {
                 if (enrolled) {
                     renderGameScreen();
                 } else {
-//                    if (typeof(p.sessionID) === 'number') {
-//                        console.log();
-//                    }
                     renderTemplate('newlogin', 'insertion', {
-                        value: p.isDev ? p.sessionID : ''
+                        value: p.isDev ? p.sessionID : 123355
                     });
                 }
             } else {
@@ -268,7 +262,7 @@
         let refreshing = false;
         const refreshView = () => {
 //            console.log(`are we already refreshing? ${refreshing}`);
-//            console.log(`refreshView, suspend? %c${suspend}`, `color: ${suspend ? 'green' : 'red'}`);
+            console.log(`refreshView, suspend? %c${suspend}`, `color: ${suspend ? 'green' : 'red'}`);
             // Do not run if suspend = true, i.e. server has shit down and is not yet ready to restart
             if (!suspend) {
                 // cut out unecessary calls by not calling if a refresh is already in progress
@@ -276,51 +270,46 @@
                 if (!refreshing) {
                     refreshing = true;
                     socket.emit('getPlayerPack', (p) => {
-                        //
+//                        console.log(`getPlayerPack:`);
+//                        console.log(p);
+
+
+
+
                         // can we use the storedData in the playerPack to assess whether the player is enrolled?
-                        //
+
+
+
+
+
+
                         refreshing = false;
                         refreshViewCallback(p);
+                        let id = getID();
+                        storageID = getStorageID();
+                        document.title = id;
+                        $('h2').html(`id: ${id}`);
+                        console.log(`emit addNewPlayer, id: ${id}, socketID: ${socket.id}`);
+                        socket.emit('addNewPlayer', {id: id}, (o) => {
+                            player = o.player;
+                        });
                     });
                 }
             } else {
-//                console.log(`suspend is true, refreshing is not possible at this time`);
+                console.log(`suspend is true, refreshing is not possible at this time`);
             }
         };
         const onConnect = () => {
-//            console.log(`onConnect, suspend? ${suspend}`);
+            console.log(`onConnect, suspend? ${suspend}`);
             connectionWarning(true);
-            socket.emit('getPlayerPack', (p) => {
-//                console.log('onConnectCallback, forget this refreshView crap');
-//                console.log(p);
-                isDev = p.isDev;
-                env = Object.assign({}, p);
-                let id = getMinID();
-                clientData.id = id;
-//                clientData.browser = {name: navigator.appName, version: navigator.appVersion, platform: navigator.platform};
-//                console.log(navigator);
-//                clientData.browser = Object.assign({}, navigator);
-//                clientData.browser = navigator;
-                socket.emit('customDataEvent', clientData);
-                id = getID();
-                storageID = getStorageID();
-                document.title = id;
-                $('h2').html(`id: ${id}`);
-//                console.log(`emit addNewPlayer, id: ${id}, socketID: ${socket.id}`);
-                socket.emit('addNewPlayer', {id: id}, (o) => {
-                    player = o.player;
-                });
-//                console.log(`player connects, three possibilities exist:`);
-                let sid = false;
-                if (p.storedData) {
-                    if (p.storedData.hasOwnProperty('sid')) {
-                        sid = p.storedData.sid;
-                    }
-                }
-//                console.log(` a) no session exists (${!Boolean(sid)}, ${sid})`);
-//                console.log(` b) a session exists which I am not enrolled in`);
-//                console.log(` c) a session exists and I am enrolled on it`);
-            });
+            suspend = false;
+            if (suspend) {
+                // server restarting after unexpected shutdown, do nothing
+//                suspend = false;
+            } else {
+                console.log(`onConnect calls refreshView`);
+                refreshView('onConnect');
+            }
         };
 
 
@@ -331,11 +320,11 @@
             onRequestSession(boo);
         });
         socket.on('connect', () => {
-//            console.log(`connect calls onConnect: ${socket.id}`);
+            console.log(`connect calls onConnect: ${socket.id}`);
             onConnect();
         });
         socket.on('onStoredGameFound', () => {
-//            console.log('onStoredGameFound calls refreshView');
+            console.log('onStoredGameFound calls refreshView');
 //            suspend = false;
             refreshView(`onStoredGameFound`);
         });
@@ -346,9 +335,6 @@
         socket.on('terminateSession', kickout);
         socket.on('newSession', onNewSession);
         socket.on('serverShutdown', serverShutdown);
-        socket.on('ping', () => {
-            onPinged();
-        });
         window.showLog = getLogs;
         //
         //        init();

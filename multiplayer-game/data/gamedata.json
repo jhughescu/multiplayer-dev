@@ -37,5 +37,8 @@
         "active": 1,
         "votes": 10,
         "likes": false
+    },
+    "prefixes": {
+        "player": "player-"
     }
 }

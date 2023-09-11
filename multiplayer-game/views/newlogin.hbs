@@ -1,11 +1,16 @@
 <div id='login'>
     <p>If you have a session ID you can enter it here to join the session</p>
-    <input type='number' id='seshnum' placeholder='enter code...' value='{{value}}'><button id='enter'>Join session</button>
+    <input type='text' id='seshnum' placeholder='enter code...' value='{{value}}' oninput='validate'><button id='enter'>Join session</button>
 </div>
 <script>
-    console.log('i am him');
-    const requestSession = () => {
-        socket.emit('requestSession', {session: txt.val(), player: staticID});
+    validate = (inp) => {
+        inp.value = inp.value.replace(/[^0-9]/g, '');
+    };
+    requestSession = () => {
+        let o = {session: txt.val().replace(/ /gm, ''), player: staticID};
+//        console.log('request session:');
+//        console.log(o);
+        socket.emit('requestSession', o);
     };
     butt = $('#enter');
     txt = $('#seshnum');

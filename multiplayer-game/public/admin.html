@@ -15,11 +15,13 @@
 </head>
 
 <body>
-    <h1>Master {{me}}</h1>
+    <h1>Master </h1>
+    <h2></h2>
     <p>This is the master client, it listens for player connections</p>
     <p id='message'></p>
     <button id='startSession'>Start Session</button>
     <button id='endSession'>End Session</button>
+    <button id='listPlayers'>List players</button>
     <div id='players'></div>
 
     <div>
@@ -47,6 +49,7 @@
                 bu.addEventListener('click', (evt) => {
                     let id = evt.target.id.replace(PINGBTN, '');
                     socket.emit('playerPing', id);
+                    console.log('playerPing', id);
                 });
             });
             b = document.getElementsByClassName('resetBtn');
@@ -59,15 +62,35 @@
         };
         let ssb = document.getElementById('startSession');
         ssb.addEventListener('click', (evt) => {
-            console.log('cow');
-            socket.emit('startNewSession', function (s) {
-                console.log('mooooooooooooooooooooo');
-            });
+            startNewSession();
         });
         let esb = document.getElementById('endSession');
         esb.addEventListener('click', (evt) => {
-            socket.emit('adminTerminateSession');
+            adminTerminateSession();
         });
+        let lpb = document.getElementById('listPlayers');
+        lpb.addEventListener('click', (evt) => {
+            listPlayers();
+        });
+        const enableButton = (b, boo) => {
+            document.querySelector(`#${b}`).disabled = !boo;
+        };
+        const setSessionButtons = (start) => {
+            console.log(`setup session buttons, has a session started? ${start ? 'yes' : 'no'}`);
+            enableButton('endSession', start);
+            enableButton('startSession', !start);
+        };
+        const startNewSession = () => {
+            setSessionButtons(true);
+            socket.emit('startNewSession', function (s) {
+                getGameToStore();
+            });
+        };
+        const newSessionStarted = (s) => {
+            let str = `session: ${s.sid.substr(0, 3)} ${s.sid.substr(3, 3)} ${s.sid.substr(6)}`;
+            $('h2').html(str);
+            setSessionButtons(true);
+        }
         const playerDisplay = (p, i) => {
             var e = document.getElementById('players');
             var s = '';
@@ -80,6 +103,7 @@
         };
         const onPlayerConnect = (msg) => {
             document.getElementById('message').innerHTML += `<p>player ${msg} has connected</p>`;
+            console.log('YES IT DOES');
         };
         const onGetPlayers = (arr) => {
 //            console.log('onGetPlayers');
@@ -111,6 +135,58 @@
         const updateSession = () => {
             socket.emit('updateSession');
         };
+        const adminTerminateSession = () => {
+            socket.emit('getPlayersDetail', (d) => {
+//                console.log(d);
+                let p = 0;
+                for (var i in d) {
+//                    console.log(d[i]);
+                    p += (d[i].enrolled ? 1 : 0);
+                }
+                if (p > 0) {
+                    let conf = confirm(`Are you sure you want to end this session? There are currently ${p} enrolled players.`);
+                    if (conf) {
+                        conf = confirm('Are you REALLY sure?');
+                        if (conf) {
+                            socket.emit('adminTerminateSession');
+                        }
+                    }
+                } else {
+                    socket.emit('adminTerminateSession');
+                }
+            });
+        };
+        const terminateSession = () => {
+            console.log('terminate the session, kill the localStorage');
+            localStorage.removeItem('susgame');
+            localStorage.clear();
+            $('h2').html(``);
+            setSessionButtons(false);
+        };
+        const buttonSetupNONEED = () => {
+            let b = document.getElementsByClassName('pingBtn');
+            [...b].forEach((bu) => {
+                bu.addEventListener('click', (evt) => {
+                    let id = evt.target.id.replace(PINGBTN, '');
+                    socket.emit('playerPing', id);
+                    console.log('playerPing', id);
+                });
+            });
+        };
+        const updatePlayersView = (p) => {
+//            console.log(`update the view with ${JSON.stringify(p)}`);
+//            console.log(p)
+            renderTemplate('playerList', 'controlPanel', {players: p});
+            buttonSetup();
+        }
+        const listPlayers = () => {
+            socket.emit('getPlayersDetail', (d) => {
+                let p = Object.values(d);
+//                console.log(d);
+//                console.log(p);
+                updatePlayersView(p);
+            });
+        };
         //
         // Methods that could potentially be made universal
         const renderTemplate = (temp, targ, o) => {
@@ -120,6 +196,7 @@
             const renderedHtml = compiledTemplate(ob);
 //            console.log(renderedHtml)
 //            console.log($(targ))
+            $(targ).html('');
             $(targ).html(renderedHtml);
         };
         //
@@ -132,16 +209,35 @@
             return storedGame;
         };
         const storeGame = (g) => {
-            console.log(`game stored now: ${JSON.stringify(g)}`);
-            localStorage.setItem('susgame', JSON.stringify(g));
+            let sg = JSON.stringify(g);
+//            console.log(`game stored now: ${sg}`);
+            localStorage.setItem('susgame', sg);
+            socket.emit('storedGameUpdated', g);
+            listPlayers();
         };
         const getGameToStore = () => {
 //            console.log('storegame');
             socket.emit('getGameMin', (g) => {
-                console.log(`this is the only way to get the game data from the server`);
+//                console.log(`this is the only way to get the game data from the server`);
 //                console.log(`the callback, setItem susgame: ${JSON.stringify(g)} (${Object.keys(g.p).length} elements)`);
                 storeGame(g);
             })
+        };
+        const hasStoredSession = (o) => {
+            // looks for a stored session ID in an object, return it if it exists or false if it does not
+            let hss = false;
+            if (o.hasOwnProperty('sid')) {
+                // if sid exists it could either be a number/string or null
+                if (o.sid) {
+                    hss = true;
+                }
+            }
+            return hss;
+        }
+        const onRequestSession = (o) => {
+            if (o.success) {
+                getGameToStore();
+            }
         };
         const onServerShutdown = () => {
             console.log('SERVER SHUTTIING DOWN');
@@ -160,12 +256,23 @@
         };
 
         socket.on('connect', () => {
+            console.log('admin connect');
+            enableButton('endSession', false);
+            enableButton('startSession', false);
+            storedGame = getStoredGame();
             if (storedGame) {
                 console.log(`storedGame found of type ${typeof(storedGame)}: ${JSON.stringify(storedGame)} (${Object.keys(storedGame.p).length} elements)`);
-//                console.log(storedGame);
+                console.log(storedGame);
                 storedGame.version = 2;
                 storedGame.elements = Object.keys(storedGame.p).length;
+                console.log(`sending stored game to server`);
                 socket.emit('storedGameFound', storedGame);
+                let s = hasStoredSession(storedGame);
+                setSessionButtons(Boolean(s.sid));
+//                setSessionButtons(true);
+            } else {
+                console.log('make the button work');
+                setSessionButtons(false);
             }
             socket.emit('customDataEvent', clientData);
         });
@@ -181,8 +288,13 @@
             onGetPlayerIDs(msg);
         });
         socket.on('updatePlayers', (arr) => {
-            console.log('I hear updatePlayers')
+//            console.log('I hear updatePlayers')
             onGetPlayerIDs(arr);
+        });
+        socket.on('playersUpdate', (pd) => {
+//            console.log(pd);
+            updatePlayersView(pd);
+//            listPlayers();
         });
         socket.on('newPlayer', (players) => {
             newPlayer(players);
@@ -194,10 +306,15 @@
         socket.on('serverShutdown', onServerShutdown);
         socket.on('serverStartup', onServerStartup);
         socket.on('updateFull', (o) => {
-            console.log('full update');
-            console.log(o);
-            console.log({p: o.playersBasic});
-            console.log(storedGame);
+//            console.log('full update');
+//            console.log(o);
+//            console.log({p: o.playersBasic});
+//            console.log(storedGame);
+        });
+        socket.on('terminateSession', terminateSession);
+        socket.on('newSession', newSessionStarted);
+        socket.on('onRequestSession', (o) => {
+            onRequestSession(o);
         });
 
 

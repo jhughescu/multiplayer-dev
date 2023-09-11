@@ -1,0 +1,10 @@
+This will be a list of players
+
+<table>
+    <tbody>
+        <tr><th>player</th><th>connected</th><th>enrolled</th><th></th></tr>
+        {{#each players}}
+        <tr><td>{{id}}</td><td class='{{connected}}'>{{connected}}</td><td class='{{enrolled}}'>{{enrolled}}</td><td><button class='pingBtn' id='pingbtn-{{id}}'>ping</button></td></tr>
+        {{/each}}
+    </tbody>
+</table>

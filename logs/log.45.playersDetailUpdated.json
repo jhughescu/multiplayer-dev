@@ -1,0 +1,10 @@
+{
+    "msg": "this is the playersDetail object after being updated with data retrieved from localStorage",
+    "3-670": {
+        "id": "3-670",
+        "socketID": "s28qfSWLnCJlcQT1AAAV",
+        "enrolled": true,
+        "active": true,
+        "stakeholder": null
+    }
+}

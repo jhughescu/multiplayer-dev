@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overlay Page</title>
+    <style>
+        /* Styles for the overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(226, 125, 125, 0.87); /* Semi-transparent black background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3; /* Ensure the overlay is on top of other content */
+        }
+
+        /* Styles for the text underneath the overlay */
+        .content {
+            position: relative;
+            z-index: 2; /* Ensure the text is above the overlay */
+            text-align: center;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <!-- The text content -->
+<!--    <div class="content">-->
+        <h1>Hello, World!</h1>
+        <p>This is some text underneath the overlay.</p>
+<!--    </div>-->
+
+    <!-- The overlay div -->
+    <div class="overlay"></div>
+</body>
+</html>

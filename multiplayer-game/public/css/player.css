@@ -27,3 +27,16 @@
 *{
     font-family: monospace;
 }
+
+#overlay #wrapper{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(116, 116, 116, 0.72); /* Semi-transparent black background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3; /* Ensure the overlay is on top of other content */
+}

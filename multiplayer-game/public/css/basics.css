@@ -14,3 +14,12 @@
     color: yellow;
     font-weight: bold;
 }
+button:disabled {
+    color: gray;
+}
+.true {
+    color: green;
+}
+.false {
+    color: red;
+}
