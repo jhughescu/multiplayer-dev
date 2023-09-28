@@ -40,7 +40,8 @@ class Player {
         this.socketID = socket.id;
         this.enrolled = false;
         this.active = true;
-        this.stakeholder = null;
+        this.stakeholder = -19;
+//        writeLogFile(`playerinstance`, this);
     }
     getWebSocket () {
         return 'ws';
@@ -57,6 +58,32 @@ class Player {
 class Session {
     constructor(id) {
         this.id = id;
+        this.round = 0;
+        this.scores = {
+            round1: {},
+            round2: {}
+        };
+    }
+    assigned;
+    active;
+    scores;
+    round;
+    setAssigned(boo) {
+        this.assigned = boo;
+//        console.log(`setting session.assigned to ${boo}`);
+//        console.log(this);
+    }
+    setRound(n) {
+        this.round = n;
+        this.scores[`round${n}`] = {};
+    }
+    getRound() {
+        return this.round;
+    }
+    getCurrentScores() {
+//        console.log(this.scores);
+//        console.log(this.round);
+        return this.scores[`round${this.round}`];
     }
 };
 class Stakeholder {
@@ -84,7 +111,14 @@ const writeLogFile = (id, c, msg) => {
     if (msg) {
         c = Object.assign({msg: msg}, c);
     }
-    fs.writeFile(f, JSON.stringify(c, null, 4), () => {console.log(`log written: ${f}`)})
+    fs.writeFile(f, JSON.stringify(c, null, 4), () => {/*console.log(`log written: ${f}`)*/})
+};
+const updateLogFile = (id, c, msg) => {
+    let f = `../logs/log.${id}.json`;
+    if (msg) {
+        c = Object.assign({msg: msg}, c);
+    }
+    fs.writeFile(f, JSON.stringify(c, null, 4), () => {/*console.log(`log written: ${f}`)*/})
 };
 const consoleLog = (m) => {
     const stack = new Error().stack;
@@ -119,6 +153,29 @@ const clearLogs = (cb) => {
     });
 };
 const processData = (d) => {
+//    let s = d.stakeholders;
+    let t = d.teams;
+    let f = d.defaults;
+    let m = d.map;
+    d.mainTeams = [];
+    for (var i in t) {
+        t[i].stub = t[i].title.toLowerCase().replace(/ /gm, '_');
+        for (var j in f) {
+            if (!t[i].hasOwnProperty(j)) {
+                t[i][j] = f[j];
+            }
+        }
+        if (t[i].hasMax) {
+            d.mainTeams.push(t[i]);
+        }
+    }
+    for (var i in m) {
+        m[m[i]] = i;
+    }
+    writeLogFile('data', d, 'gameData prepared by processData method');
+    return d;
+};
+const processDataV1 = (d) => {
     let s = d.stakeholders;
     let f = d.defaults;
     let m = d.map;
@@ -160,14 +217,15 @@ const updatePlayersBasic = () => {
 };
 const updatePlayersDetail = () => {
     let pd = playersDetail;
-    console.log(`~~~~~~~~~~~~~~~~~~~~  updatePlayersDetail (${Object.keys(pd).length} players)`);
+    sortPlayersDetail();
+//    console.log(`~~~~~~~~~~~~~~~~~~~~  updatePlayersDetail (${Object.keys(pd).length} players)`);
 //    console.log(storedData);
 //    console.log(playersDetail);
 //    console.log(playersMap);
     for (var i in pd) {
 //        console.log(pd[i]);
-        console.log(pd[i].socketID);
-        console.log(playersMap.get(pd[i].socketID).connected);
+//        console.log(pd[i].socketID);
+//        console.log(playersMap.get(pd[i].socketID).connected);
         pd[i].connected = playersMap.get(pd[i].socketID).connected;
 //        writeLogFile(`player-${pd[i].id}`, playersMap.get(pd[i].socketID));
     }
@@ -177,18 +235,31 @@ const updateSinglePlayerDetail = (id) => {
     if (storedData) {
         let sp = storedData.p;
         id = id.replace(playerPrefix, '');
-    //    console.log(`updateSinglePlayerDetail: ${id}`);
+//        console.log(`updateSinglePlayerDetail: ${id}`);
     //    console.log(sp);
         if (sp) {
             if (sp.hasOwnProperty(id)) {
-        //        console.log(sp[id]);
+//                console.log('assigning object');
+//                console.log(sp[id]);
                 Object.assign(playersDetail[id], getDetailedPlayerSummary(sp[id], playersDetail[id]));
-    //            console.log(playersDetail[id]);
+//                console.log(playersDetail[id]);
+            } else {
+//                console.log(`no player found with ID ${id}`);
             }
         }
     } else {
         console.log(`can't update ${id} because storedData has not been defined`)
     }
+};
+const getPlayerFromID = (id) => {
+    let pl = playersDetail[id];
+    return pl;
+};
+const getSocketFromID = (id) => {
+    let sock = null;
+    sock = getPlayerFromID(id).socketID;
+    sock = playersMap.get(sock);
+    return sock;
 };
 const onPlayersUpdate = () => {
 //    console.log(`emit the event`);
@@ -202,36 +273,41 @@ const getSessionID = () => {
     return sessionID;
 };
 const requestSession = (o) => {
-//    consoleLog(Object.keys(playersBasic).length);
-//    io.emit('onRequestSession', o.sessionID === getSessionID() ? `sustain${getSessionID()}` : false);
 //    if the session ID passed matches the session ID for the app, return the passed player id for verification, otherwise return false:
     let ro = {
         player: o.player,
-        success: o.session === getSessionID()
+        success: o.session === getSessionID(),
+        sessionAssigned: session.assigned
     }
-    console.log(`requestSession`);
-    console.log(ro);
-    console.log(getSessionID());
-
     onRequestSession(ro);
+};
+const allPlayersEnrolled = () => {
+    let allIn = true;
+    for (var i in playersDetail) {
+        if (!playersDetail[i].enrolled) {
+            allIn = false;
+            break;
+        }
+    }
+    io.emit('enrollmentUpdate', {allIn: allIn});
+    return allIn;
 };
 const onRequestSession = (o) => {
     let p = playersDetail[o.player.replace(playerPrefix, '')];
-//    console.log('onRequestSession');
-//    console.log(o);
-//    console.log(o.player);
-//    playersDetail[o.player.replace(playerPrefix, '')].enrolled = o.success;
-//    console.log(playersDetail);
-//    console.log(p);
     if (p) {
         p.enrolled = o.success;
     }
-//    console.log(p);
     if (o.success) {
         updatePlayersBasic();
-
+//        console.log(`success, what sbout the session?`);
+//        console.log(session);
+        if (session.assigned) {
+//            console.log('session is already assigned, this one goes into the public voices group');
+//            console.log(o);
+            latecomer(o);
+        }
     }
-//    console.log(p);
+    o.allIn = allPlayersEnrolled();
     io.emit('onRequestSession', o);
 };
 const terminateSession = () => {
@@ -240,44 +316,123 @@ const terminateSession = () => {
     playersDetail = {};
     playersMap = new Map();
     sessionID = null;
+    session = null;
     io.emit('terminateSession');
+};
+//
+const pvStakeholderScore = (o) => {
+    let t = Object.values(gamedata.teams);
+    if (session) {
+        if (session.assigned) {
+            if (t[o.targ].team) {
+                let sc = session.getCurrentScores();
+                if (!sc.hasOwnProperty('pvVotes')) {
+                    sc.pvVotes = {
+                        list: [],
+                        summary: {}
+                    };
+                }
+                sc.pvVotes.list.push(o);
+                let ob = Object.assign({}, sc.pvVotes);
+                Object.values(gamedata.teams).forEach((p) => {
+                    if (p.hasMax) {
+                        ob.summary[`t-${p.id}`] = {};
+                    }
+                });
+                ob.list.forEach((v) => {
+                    if (!ob.summary[`t-${v.targ}`].hasOwnProperty(`v-${v.team}`)) {
+                        ob.summary[`t-${v.targ}`][`v-${v.team}`] = {a: [], t: 0, m: 0}
+                    }
+                    ob.summary[`t-${v.targ}`][`v-${v.team}`].a.push(v.v);
+                });
+                Object.values(ob.summary).forEach((a) => {
+                    Object.values(a).forEach((s) => {
+                        s.a.forEach((v) => {
+                            s.t += v;
+                        });
+                        s.m = s.t / s.a.length;
+                    });
+                });
+                updateLogFile('theob', ob);
+                updateLogFile('thesession', session);
+                // Store the scores in the scoring player object
+                let pl = getPlayerFromID(o.src);
+                if (!pl.hasOwnProperty('scores')) {
+                    pl.scores = {};
+                }
+                let r = `r${session.getRound()}`;
+                if (!pl.scores.hasOwnProperty(r)) {
+                    pl.scores[r] = [];
+                }
+                pl.scores[r].push({targ: o.targ, v: o.v});
+                // Update the vote total in the scoring player
+                pl.teamObj.votes -= Math.abs(o.v);
+                updateLogFile('playersDetail', playersDetail);
+                getSocketFromID(o.src).emit('scoreUpdate', o);
+                //
+                session.getCurrentScores().pvVotes = ob;
+                updateLogFile('session', session);
+                return ob;
+            }
+        }
+    }
 };
 
 const rNum = (i) => {
     if (i < 10) {i = '0' + i};
     return i;
 };
-const getPlayerPack = (cb) => {
+const getPlayerPack = (cb, sock) => {
     // return all available initial stuff to a newly connected player client
-//    console.log(`playersBasic ${JSON.stringify(playersBasic)}`);
-//    console.log(`playersBasic type: ${typeof(playersBasic)}`);
-//    console.log(`getSessionID ${getSessionID()}`);
-//    console.log(`getSessionID ${Boolean(getSessionID())}`);
     let d = new Date();
     let o = {
         timer: `${rNum(d.getHours())}:${rNum(d.getMinutes())}:${rNum(d.getSeconds())}`,
         isDev: isDev,
-//        sessionID: isDev ? getSessionID() : 'ha, nice try',
         sessionID: isDev ? getSessionID() : Boolean(getSessionID()),
-//        sessionID: getSessionID(),
+        session: session,
         playersBasic: playersBasic,
         playersDetail: playersDetail,
         storedData: storedData,
         gamedata: gamedata
     }
-//    console.log(typeof(cb));
+//    writeLogFile('getPlayerPack', {
+//        id: sock.id,
+//        pid: sock.customData,
+//        detail: o.playersDetail
+//    });
     if (cb) {
+//        console.log(`getPlayerPack callback:`)
         cb(o);
     }
+};
+const getPlayer = (id, cb) => {
+    // return just the player defined by id
+//    console.log(`request to getPlayer ${id}`);
+    cb(getPlayerFromID(id));
 };
 const getGameMin = (cb) => {
     // Prepare & return a minimal game summary for localStorage
 //    console.log('request to getGameMin');
-    let o = {sid: sessionID, p: playersBasic};
+//    let o = {sid: sessionID, p: playersBasic};
+    let s = {
+        sid: sessionID,
+        ass: false
+    }
+    if (session) {
+        if (session.hasOwnProperty('assigned')) {
+            if (session.assigned !== undefined) {
+                s.ass = session.assigned;
+            }
+        }
+    }
+    let o = {
+        s: s,
+        p: playersBasic};
 //    console.log(o);
     cb(o);
 };
 const valConvert = (v) => {
+//    console.log(`IN ${v}`);
     if (v === 'null') {
         v = null;
     }
@@ -290,6 +445,7 @@ const valConvert = (v) => {
     if (v === 'false') {
         v = false;
     }
+//    console.log(`OUT ${v}`);
     return v;
 };
 const getBasicPlayerSummary = (plo) => {
@@ -297,9 +453,11 @@ const getBasicPlayerSummary = (plo) => {
 //    console.log(`get the player summary ${plo}`);
 //    console.log(plo);
     s = `e${Number(plo.enrolled)},a${Number(plo.active)},s${plo.stakeholder}`;
+//    console.log(`store string: ${s}`);
     return s;
 };
 const getDetailedPlayerSummary = (str, o) => {
+//    console.log('oooooooooooooooooooooooooooooooooo')
     let c = {
         enrolled: 'e',
         active: 'a',
@@ -316,8 +474,17 @@ const getDetailedPlayerSummary = (str, o) => {
     });
     for (var i in c) {
         let v = d[c[i]];
-        if (!isNaN(parseInt(v)) && v.toString().length === 1) {
+
+        if (!isNaN(parseInt(v)) && v.toString().length === 1 && c[i] !== 's') {
+            // don't boolean if c[i] is 's' (stakeholder is an integer)
             v = Boolean(v);
+        }
+        if (c[i] === 's') {
+//            console.log(i, c[i], v);
+//            console.log(gamedata.teams);
+//            console.log(Object.values(gamedata.teams));
+//            console.log(Object.values(gamedata.teams)[c[i]]);
+//            v = Object.values(gamedata.teams)[v].title;
         }
         c[i] = v;
     }
@@ -326,60 +493,65 @@ const getDetailedPlayerSummary = (str, o) => {
 //    console.log(o);
     return c;
 };
+const sortPlayersDetail = () => {
+    let d = playersDetail;
+    let od = {};
+    let i = null;
+    for (i in d) {
+        if (!d[i].hasOwnProperty('fake') || !d[i].fake) {
+            od[i] = d[i];
+        }
+    }
+    for (i in d) {
+//        console.log(` - ${d[i].fake}`);
+        if (d[i].fake) {
+            od[i] = d[i];
+        }
+    }
+//    writeLogFile('sortedPlayers', od);
+    playersDetail = od;
+};
 const pingPlayer = (id) => {
     let pl = playersDetail[id];
     if (pl) {
         if (playersMap.has(pl.socketID)) {
             playersMap.get(pl.socketID).emit('ping');
         } else {
-            console.log(`playersMap has no element with key ${pl.socketID}`);
+//            console.log(`playersMap has no element with key ${pl.socketID}`);
         }
     } else {
-        console.log(`no player with id ${id} in the playersDetail object`);
+//        console.log(`no player with id ${id} in the playersDetail object`);
     }
 };
 const addNewPlayer = (o, socket, callback) => {
     let id = o.id;
     id = id.replace(gamedata.prefixes.player, '');
-//    let pl = new Player(id, socket.id);
     let pl = new Player(id, socket);
+//    writeLogFile('newplayer', pl);
+    if (o.fake) {
+        pl.fake = true;
+    } else {
+        pl.fake = false;
+    }
     console.log(`~~~~~~~~~~~~~~~~ addNewPlayer id: ${id}, socketid: ${socket.id}`);
-//        console.log(socket);
-//    console.log(socket.id);
-//    console.log(socket.customData);
+//    console.log(o);
     if (!playersBasic.hasOwnProperty(id)) {
         playersBasic[id] = getBasicPlayerSummary(pl);
-        console.log(`~~~~~~~~~~~~~~~~~~~~~~~~~ add to playersBasic: ${id}, pb total now: ${Object.keys(playersBasic).length}`);
-    } else {
-        console.log(`${id} already added to playersBasic (${Object.keys(playersBasic).length} players registered)`);
-//        console.log(playersBasic);
     }
     if (!playersDetail.hasOwnProperty(id)) {
         playersDetail[id] = pl;
-        console.log(`~~~~~~~~~~~~~~~~~~~~~~~~~ add to playersDetail: ${id}, pd total now: ${Object.keys(playersDetail).length}`);
         updateSinglePlayerDetail(id);
         playersMap.set(socket.id, socket);
-//        console.log(playersMap);
     } else {
-//        console.log('player already registered, but this may be a socket update');
-//        console.log(playersDetail[id].socketID);
-//        console.log(socket.id);
         if (playersDetail[id].socketID !== socket.id) {
-            console.log(`yep, it's a socket update, change the socketID and update the map`);
-
+//            console.log(`yep, it's a socket update, change the socketID and update the map`);
             playersMap.delete(playersDetail[id].socketID);
             playersDetail[id].socketID = socket.id;
             playersMap.set(socket.id, socket);
         }
     }
-//    console.log(pl);
-//    console.log(playersMap);
-//    console.log(pl.socketID)
-//    console.log(playersMap.get(pl.socketID));
-//    console.log(playersMap[pl.socketID])
-    console.log(`playersMap size: ${playersMap.size}`);
-//    playersMap.get(playersDetail[id].socketID).emit('ping');
     io.emit('onAddNewPlayer', playersBasic);
+    allPlayersEnrolled();
     if (callback) {
         if (typeof (callback) === 'function') {
             callback({
@@ -392,17 +564,59 @@ const addNewPlayer = (o, socket, callback) => {
         }
     }
 };
-const startSession = () => {
-    app.get(`/sustain${getSessionID()}`, (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'player.html'));
+const getFakePlayers = (cb) => {
+    // dev method; return an object containing all player objects with a 'fake=true' property
+    let p = playersDetail;
+    let rp = {};
+    Object.entries(p).forEach(([k, v]) => {
+//        console.log(k);
+//        console.log(v);
+        if (v.fake) {
+            rp[k] = Object.assign({}, v);
+        }
     });
-//    io.emit('onNewSession', {session: s, gamedata: gamedata, players: playersObj});
-    io.emit('newSession', {sid: getSessionID()});
-    setInterval(updateTimer, 1000);
-//    console.log(`startNewSession`);
+    cb(rp);
+};
+const addFakePlayers = () => {
+    // dev method: stored data has fake players but the players have not been added
+    if (isDev) {
+        console.log(`let's do it`);
+        let sp = storedData;
+        if (sp) {
+            sp = storedData.p
+            let n = 0;
+            for (var i in sp)  {
+                if (i.substr(0, 1) === 'f') {
+                    n++;
+
+                }
+            }
+            io.emit('getFakePlayers', n);
+        }
+    }
+};
+const startSession = () => {
+//    console.log(`startSession called`);
+//    console.log(session);
+    if (session === null) {
+//        if (!session.active) {
+            let sid = getSessionID();
+            app.get(`/sustain${getSessionID()}`, (req, res) => {
+                res.sendFile(path.join(__dirname, 'public', 'player.html'));
+            });
+            io.emit('newSession', {sid: sid});
+            console.log(`Hey, it's a new session, that's awesome`);
+            session = new Session(sid);
+            session.active = true;
+            setInterval(updateTimer, 1000);
+//        }
+    } else {
+//        console.log(`session already in progress, can't start another`);
+    }
 };
 const startNewSession = (cb) => {
     setSessionID();
+//    console.log(`startNewSession calls startSession`);
     startSession();
     if (cb) {
 //        console.log(`and the callback`);
@@ -411,23 +625,27 @@ const startNewSession = (cb) => {
 }
 const processStoredGame = (d) => {
     storedData = d;
+//    console.log('PROCESS-STORED-GAME');
     if (typeof(d) === 'string') {
             d = JSON.parse(d);
     }
     if (d.hasOwnProperty('sid')) {
         if (d.sid) {
             sessionID = d.sid;
+//            console.log(`processStoredGame calls startSession`);
             startSession();
         }
     }
     if (d.p) {
         updatePlayersDetail();
         for (var i in d.p) {
+//            console.log(` - ${i}`);
             if (playersDetail.hasOwnProperty(i)) {
                 // Combine the playersDetail object with the stored data for the given player
                 let det = getDetailedPlayerSummary(d.p[i], playersDetail[i]);
                 Object.assign(playersDetail[i], det);
-//                console.log(playersDetail[i]);
+
+//                console.log(` - ${playersDetail[i]}`);
             }
         }
     }
@@ -438,11 +656,279 @@ const processStoredGame = (d) => {
     }
     playersBasic = Object.assign({}, d.p);
     io.emit('onStoredGameFound');
-    writeLogFile('playersDetailUpdated', playersDetail, 'this is the playersDetail object after being updated with data retrieved from localStorage')
+//    writeLogFile('playersDetailUpdated', playersDetail, 'this is the playersDetail object after being updated with data retrieved from localStorage')
+};
+const pageTypeAdded = (t) => {
+//    console.log(`pageTypeAdded :${t}`);
+    if (t === 'admin') {
+//        addFakePlayers();
+    }
+};
+const getGameData = (cb) => {
+    cb(gamedata);
+};
+const sortWeight = (a, b) => {
+    // sort an array of teams according to the weighting factor
+    let r = 0;
+
+    if (a[1].weight > b[1].weight) {
+        r = -1;
+    }
+    if (a[1].weight < b[1].weight) {
+        r = 1;
+    }
+//    console.log(a[1].weight, b[1].weight, r);
+    return r;
+};
+const sortFake = (a, b) => {
+    // sort IDs depending on whether they are fakes, i.e. have an 'f' prefix
+    // (fakes at the end)
+    let r = 0;
+    if (a.substr(0, 1) === 'f') {
+        r = 1;
+    }
+    if (b.substr(0, 1) === 'f') {
+        r = -1;
+    }
+//    console.log(r);
+    return r;
+};
+const sortRandom = (a, b) => {
+    const r = Math.ceil((Math.random() * 3) - 2);
+//    console.log(r);
+    return r;
+};
+const previewDistribution = (tin) => {
+    console.log(`########################previewDistribution`);
+    let c = 0;
+    let d = [];
+    let t = JSON.parse(JSON.stringify(tin));
+    t = Object.entries(t);
+    t.sort(sortRandom);
+    t.sort(sortRandom);
+    t.sort(sortRandom);
+    t.sort(sortWeight);
+    t.forEach(([k, v]) => {
+        c += v.weight;
+        for (var j = 0; j < v.weight; j++) {
+            d.push({id: k, n: v.id, t: []});
+        }
+    });
+    let p = Object.keys(playersDetail);
+    p.sort(sortRandom);
+    p.sort(sortRandom);
+    p.sort(sortRandom);
+//    console.log(p);
+    while (p.length > 0) {
+        d.forEach((dt) => {
+            if (p.length > 0) {
+                let cp = p.pop();
+                dt.t.push(cp);
+            }
+        });
+
+    };
+//    console.log(d);
+    t = JSON.parse(JSON.stringify(tin));
+//    console.log(t);
+//    Object.keys(t).forEach();
+    d.forEach((te) => {
+        let team = te.id;
+        console.log(t[team].title);
+        if (t[te.id]) {
+//            console.log(`team found in gamedata with id ${te.id}`);
+            if (!t[te.id].hasOwnProperty('team')) {
+                t[te.id].team = te.t;
+            } else {
+
+                // - here is a problem: the array is cocatenated each time the method runs
+                // - solve by using an obect instead?
+
+                let a = t[te.id].team.reduce((acc, id) => {
+                    acc[id] = {};
+                    return acc;
+                }, {});
+//                console.log(`a:`);
+//                console.log(a);
+                let b = te.t;
+//                console.log('b:');
+//                console.log(b);
+                if (b) {
+                    b = te.t.reduce((acc, id) => {
+                        acc[id] = {};
+                        return acc;
+                    }, {});
+                }
+                console.log(a);
+                console.log(b);
+                a = Object.assign(a, b);
+//                console.log(`a final:`);
+                console.log(a);
+
+//                t[te.id].team = t[te.id].team.concat(te.t);
+                t[te.id].team = Object.keys(a);
+                console.log(`team has ${Object.keys(a).length} members`);
+            }
+            t[te.id].teamSize = t[te.id].team.length
+        }
+    });
+//    console.log(t);
+//    console.log(playersDetail);
+    return t;
+};
+const previewTeams = (cb) => {
+//    console.log('previewTeams');
+    let teams = {};
+    let d = gamedata;
+    if (d.hasOwnProperty('teams')) {
+        d = d.teams;
+    } else {
+        d = d[d.definitions['teams']];
+    }
+    teams = previewDistribution(d);
+    cb(teams);
+};
+const getTeamMax = () => {
+    let d = gamedata;
+    let tm = Object.keys(d.teams);
+    let p = Object.keys(playersDetail);
+    let max = tm.length;
+    if (d.settings) {
+        if (d.settings.teamMax) {
+            max = d.settings.teamMax;
+        }
+    }
+//    console.log(`${max} before`);
+    while ((max * tm.length) > p.length) {
+        max--;
+    }
+//    console.log(`${max} after`);
+    return max;
+};
+const copyObj = (o) => {
+    return JSON.parse(JSON.stringify(o));
+};
+const latecomer = (o) => {
+    // someone has joined an active session, assign them to one of the public voices teams
+    let p = playersDetail;
+    let t = Object.assign({}, gamedata.teams);
+    let tn = {};
+    let pid = o.player.replace(playerPrefix, '');
+//    console.log('adding a latecomer to the public voices team with the least members');
+    for (var i in t) {
+        if (!t[i].hasMax) {
+            tn[i] = t[i];
+        }
+    }
+    let min = 999;
+    for (var i in tn) {
+        if (tn[i].team.length < min) {
+            min = tn[i].team.length;
+            // NOTE: reusing t
+            t = tn[i];
+        }
+    }
+    playersDetail[pid].stakeholder = t.id;
+    playersDetail[pid].teamObj = Object.assign(copyObj(t), {});
+    updatePlayersBasic();
+    t.team.push(pid);
+};
+const assignTeams = (cb) => {
+    let d = gamedata;
+    let teams = d.teams;
+    let max = getTeamMax();
+    let p = Object.keys(playersDetail);
+    let t = 0;
+    Object.values(teams).forEach((v) => {
+        v.team = [];
+        if (v.hasMax) {
+            t++
+        }
+    });
+    if (t === 0) {
+        t = 1;
+    }
+    let top = max * t;
+    if (top > p.length) {
+        top = p.length;
+    }
+    let tc = Object.keys(JSON.parse(JSON.stringify(teams)));
+    p.sort(sortRandom);
+    p.sort(sortRandom);
+    p.sort(sortRandom);
+    p.sort(sortFake);
+    for (var i = 0; i < (max * Object.keys(teams).length); i++) {
+        let tn = p.shift();
+        if (tn) {
+            Object.values(teams)[i%Object.keys(teams).length].team.push(tn);
+        }
+    }
+    while (p.length > 0) {
+        Object.values(teams).forEach((v) => {
+            if (!v.hasMax) {
+                if (p.length > 0) {
+                    let tn = p.shift();
+                    v.team.push(tn);
+                }
+            }
+        });
+    }
+    Object.entries(gamedata.teams).forEach(([k, v]) => {
+        v.team.forEach((p) => {
+            if (playersDetail[p]) {
+                playersDetail[p].stakeholder = v.id;
+                playersDetail[p].teamObj = Object.assign(copyObj(v), {});
+                let sock = playersMap.get(playersDetail[p].socketID);
+                sock.emit('onAssignTeams', k);
+            } else {
+                console.log(`${p} not defined in playersDetail`);
+            }
+        });
+    });
+    updatePlayersBasic();
+    if (session){
+        session.setAssigned(true);
+    }
+    cb(gamedata.teams);
+};
+const assignTeamsV1 = (cb) => {
+
+    let teams = {};
+    let d = gamedata;
+    if (d.hasOwnProperty('teams')) {
+        d = d.teams;
+    } else {
+        d = d[d.definitions['teams']];
+    }
+    teams = previewDistribution(d);
+    console.log(`assignTeams#: ${Object.keys(gamedata.teams).length} teams`);
+    for (var i in gamedata.teams) {
+        console.log(gamedata.teams[i]);
+        gamedata.teams[i].team = teams[i].team;
+        gamedata.teams[i].teamSize = teams[i].teamSize;
+        console.log(` - teamsize: ${teams[i].teamSize}`);
+        gamedata.teams[i].team.forEach((p) => {
+            console.log(` - - ${p}`);
+            if (playersDetail[p]) {
+                let sock = playersMap.get(playersDetail[p].socketID);
+                sock.emit('onAssignTeams', i);
+            } else {
+                console.log(`${p} not defined in playersDetail`);
+            }
+        });
+
+    }
+//    console.log(playersMap);
+    cb(teams);
 };
 const initApp = () => {
-    consoleLog('initApp');
+    consoleLog('~ ~ ~ ~ ~ ~ ~ ~');
+    consoleLog('~ ~ ~ ~ ~ ~ ~ ~');
+    consoleLog('~ ~ ~ ~ ~ ~ ~ ~');
+    consoleLog('~ ~ ~ ~ ~ ~ ~ ~');
+    consoleLog('~ ~ ~ ~ ~ ~ ~ ~ initApp');
     gamedata = processData(require('./data/gamedata.json'));
+    clearLogs();
     io.emit('serverStartup');
 //    initSession();
 };
@@ -459,51 +945,23 @@ const exitApp = () => {
 io.on('connection', (socket) => {
     socket.on('customDataEvent', (customData) => {
         socket.customData = customData;
-        console.log(`socket connected with role ${socket.customData.role} ${socket.id}`);
+//        console.log(`socket connected with role ${socket.customData.role} ${socket.id}`);
+        pageTypeAdded(socket.customData.role);
 //        if () {}
     });
     socket.on('addNewPlayer', (o, callback) => {
+//        console.log('addNewPlayer event heard');
         addNewPlayer(o, socket, callback);
-        return;
-        /*
-        let id = o.id;
-        id = id.replace(gamedata.prefixes.player, '');
-        let pl = new Player(id, socket.id);
-        console.log(`~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ addNewPlayer id: ${id}, socketid: ${socket.id}`);
-//        console.log(socket);
-        console.log(socket.id);
-        console.log(socket.customData);
-        if (!playersBasic.hasOwnProperty(id)) {
-            playersBasic[id] = getBasicPlayerSummary(pl);
-            console.log(`~~~~~~~~~~~~~~~~~~~~~~~~~ add to playersBasic: ${id}, pb total now: ${Object.keys(playersBasic).length}`);
-        } else {
-            console.log(`${id} already added to playersBasic (${Object.keys(playersBasic).length} players registered)`);
-            console.log(playersBasic);
-        }
-        if (!playersDetail.hasOwnProperty(id)) {
-            playersDetail[id] = pl;
-            console.log(`~~~~~~~~~~~~~~~~~~~~~~~~~ add to playersDetail: ${id}, pd total now: ${Object.keys(playersDetail).length}`);
-            updateSinglePlayerDetail(id);
-        }
-        io.emit('onAddNewPlayer', playersBasic);
-        if (callback) {
-            if (typeof (callback) === 'function') {
-                callback({
-                    player: pl,
-                    playersBasic: playersBasic
-//                    master: master,
-//                    session: getSession(),
-//                    gamedata: gamedata
-                })
-            }
-        }
-        */
     });
     socket.on('getBasicPlayers', (cb) => {
         cb(playersBasic);
     });
+    socket.on('getFakePlayers', (cb) => {
+        getFakePlayers(cb);
+    });
     socket.on('getPlayersDetail', (cb) => {
         updatePlayersDetail();
+//        writeLogFile('thedetailasrequested', playersDetail);
         cb(playersDetail);
     });
     socket.on('getGameData', (cb) => {
@@ -521,7 +979,10 @@ io.on('connection', (socket) => {
     });
     socket.on('getPlayerPack', (cb) => {
 //        console.log('call to getPlayerPack');
-        getPlayerPack(cb);
+        getPlayerPack(cb, socket);
+    });
+    socket.on('getPlayer', (id, cb) => {
+        getPlayer(id, cb);
     });
     socket.on('updateSession', () => {
 //        console.log('onUpdateSession');
@@ -542,7 +1003,6 @@ io.on('connection', (socket) => {
     });
     socket.on('storedGameFound', (d) => {
         processStoredGame(d);
-
     });
     socket.on('storedGameUpdated', (d) => {
         processStoredGame(d);
@@ -561,23 +1021,50 @@ io.on('connection', (socket) => {
                 break;
             }
         }
+//        console.log(`disconnect event`);
+//        console.log(disconnectedPlayer);
         if (disconnectedPlayer) {
-            // Perform any actions required for the disconnected player
-            playersDetail[disconnectedPlayer.customData.id].handleDisconnect();
-//            console.log(disconnectedPlayer.handshake.headers);
-//            console.log(disconnectedPlayer.handshake.headers['sec-ch-ua']);
-//            console.log(`disconnected client: ${disconnectedPlayer.handshake.headers['user-agent']}`);
-//            console.log(`disconnected client: ${disconnectedPlayer.handshake.headers['user-agent']}`);
-//            console.log(`disconnected client: ${disconnectedPlayer.handshake.headers['user-agent'].split(' ').reverse()[0]}`);
-            // Remove the player from the 'players' map
-//            players.delete(disconnectedPlayer.id);
-            onPlayersUpdate();
-            console.log(`disconnect!!!!!!!!!!`);
+            if (disconnectedPlayer.hasOwnProperty('customData')) {
+                if (disconnectedPlayer.customData.hasOwnProperty('id')) {
+                    // Perform any actions required for the disconnected player
+                    playersDetail[disconnectedPlayer.customData.id].handleDisconnect();
+                    onPlayersUpdate();
+//                    console.log(`disconnect!!!!!!!!!!`);
+                } else {
+//                    console.log('customData found but has no ID property');
+                }
+            } else {
+//                console.log('no customData found');
+            }
         } else {
-            console.log('no player found');
+//            console.log('no player found for disconnect');
         }
-        console.log(`disconnect: ${disconnectedPlayer}`);
+//        console.log(`disconnect: ${disconnectedPlayer}`);
     });
+    socket.on('requestGameData', (cb) => {
+        getGameData(cb);
+    });
+    socket.on('previewTeams', (cb) => {
+        previewTeams(cb);
+    });
+    socket.on('assignTeams', (cb) => {
+        assignTeams(cb);
+    });
+    socket.on('testEvent', (msg) => {
+        console.log(`testEvent: ${msg}`);
+    });
+    //
+    socket.on('pvStakeholderScore', (o) => {
+        pvStakeholderScore(o);
+    });
+    socket.on('startRound', (r) => {
+        if (session) {
+            session.setRound(r);
+            io.emit('startRound', r);
+            io.emit('sessionUpdate');
+        }
+    });
+
 });
 
 
@@ -657,6 +1144,9 @@ app.get('/newlogin', (req, res) => {
 app.get('/game', (req, res) => {
     res.render('game'); // Render the game template
 });
+app.get('/fakes', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'fakeplayers.html'));
+})
 
 server.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);

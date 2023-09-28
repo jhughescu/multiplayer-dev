@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src='templates/sustemplates.js'></script>
+    <script src='templates/suspartials.js'></script>
     <link rel='stylesheet' href='css/basics.css'>
     <link rel='stylesheet' href='css/player.css'>
 </head>
@@ -31,6 +32,14 @@
         let player = null;
         let suspend = false; /* suspend is true when the server connection is down */
 
+        Handlebars.registerHelper('playerPartial', function(partialName, context) {
+            const partial = Handlebars.partials[partialName];
+            if (typeof partial === 'function') {
+                return new Handlebars.SafeString(partial(this));
+            }
+            return '';
+        });
+
         const log = (msg) => {
             let i = 'log_' + Object.keys(logList).length;
             logList[i] = msg;
@@ -42,8 +51,6 @@
             }
         };
         const onRequestSession = (o) => {
-//            console.log(`onRequestSession: ${o}`);
-//            console.log(o);
             if (o.player === staticID) {
                 if (o.success) {
                     refreshView();
@@ -59,12 +66,19 @@
             if (window.location.hash && isDev) {
                 if (window.location.hash.substr(0, 1) === '#') {
                     h = window.location.hash.replace('#', '');
+                    if (h.indexOf('?', 0) > -1) {
+                        h = h.split('?')[0];
+                    }
                 }
             }
+//            console.log(`getHash: ${h}, isDev: ${isDev}`);
+//            console.log(JSON.parse(JSON.stringify(window.location)))
             return h;
         };
         const getStorageID = () => {
-            return `player${getHash()}ID`
+            let sid = `player${getHash()}ID`;
+//            console.log(`sid set to ${sid}`);
+            return sid;
         };
         const generateID = () => {
 //            console.log(`gen id`);
@@ -72,6 +86,9 @@
             if (window.location.hash) {
                 if (window.location.hash.substr(0, 1) === '#') {
                     id = id.replace('-', '-' + window.location.hash.replace('#', '') + '-');
+                    if (id.indexOf('?', 0) > -1) {
+                        id = id.split('?')[0];
+                    }
                 }
             }
             if (id) {
@@ -103,8 +120,21 @@
 //            console.log(`getID call; getMinID method: ${id}`);
             return id;
         };
+        const prepPlayer = (p) => {
+            // Output a player object based on a retrieved object
+            let s = p.stakeholder;
+            p.stakeholderID = s;
+            if (s < 0) {
+                p.stakeholder = 'unassigned';
+            } else {
+                p.stakeholder = Object.values(env.gamedata.teams)[s].title;
+            }
+//            console.log(env.gamedata.teams);
+//            console.log('playa');
+//            console.log(p);
+            return p;
+        };
         const newPlayer = () => {
-//            let id = getID();
 //            log(`newPlayer called, id: ${id}`);
 //            storageID = getStorageID();
 //            document.title = id;
@@ -113,7 +143,7 @@
 //            socket.emit('addNewPlayer', {id: id}, (response) => {
 //                gameInit();
 //            });
-            console.log(`newPlayer calls refreshView`);
+//            console.log(`newPlayer calls refreshView`);
             refreshView('newPlayer');
             gameInit();
         };
@@ -121,8 +151,6 @@
             // this code is open to abuse, replace it with insertion of template HTML
             let sessionID = txt.value;
             renderGameScreen();
-//            console.log(`gameInit; setting the localStorage ${sessionID}`);
-//            localStorage.setItem(getStorageID(), JSON.stringify({id: staticID, sessionID: sessionID}));
         };
         const kickout = () => {
             renderTemplate('outtro', 'insertion');
@@ -143,17 +171,43 @@
             const compiledTemplate = Handlebars.templates[temp];
             const renderedHtml = compiledTemplate(ob);
             $(targ).html('');
+//            console.log('re-render');
             $(targ).html(renderedHtml);
         };
         const renderGameScreen = () => {
             let o = {
                 playerID: staticID
             };
-            renderTemplate('game', 'insertion', o);
+//            socket.emit('testEvent', 'renderGameScreen');
+            socket.emit('getPlayerPack', (o) => {
+                player = prepPlayer(o.playersDetail[getMinID()]);
+//                console.log('render gs');
+//                console.log(o);
+//                return;
+//                debugger;
+                if (o.session.assigned) {
+//                    if (Object.values(env.gamedata.teams)[player.stakeholderID]) {
+                    if (player.stakeholderID > -1) {
+                        player.partialName = Object.values(env.gamedata.teams)[player.stakeholderID].hasMax ? 'stakeholder' : 'publicvoices';
+                    } else{
+                        console.log(`no team defined for the player`);
+                    }
+                } else {
+                    console.log(`no session.assigned`);
+                }
+                player = Object.assign(env.gamedata, player);
+                renderTemplate('game', 'insertion', player);
+//                console.log('player:');
+//                console.log(player);
+//                console.log(player.stakeholderID);
+//                console.log(env.gamedata);
+            });
         };
         const onNewSession = () => {
-//            console.log(`onNewSession calls refreshView`);
-            refreshView('onNewSession');
+            // Reload the page rather than refresh view - this enables script to run successfully on rendered page
+            // Note: prior call to 'onStoredGameFound' causes a refresh, hence the flicker. Consider a way to remove this in future.
+            window.location.reload();
+//            refreshView('onNewSession');
         };
         const connectionWarning = (boo) => {
 //            console.log(`connectionWarning: ${boo}`);
@@ -197,37 +251,9 @@
         };
         const init = () => {
 //            console.log('this is init ');
-//            let id = getID();
 //            storageID = getStorageID();
 //            console.log(`storageID: ${storageID}`)
 //            console.log(`init, id: ${id}`)
-        };
-        const initRenderNOTUSED = () => {
-            let newPlayer = !env.playersBasic.hasOwnProperty(getMinID());
-            log(`id: ${getID()}`)
-            log(`connect callback, ${newPlayer ? 'new player' : 'existing player'}`);
-            log(`p.playersBasic has own property ${getID()}? ${env.playersBasic.hasOwnProperty(getID())}`);
-            log(`isDev? ${isDev}`);
-            console.log(getID());
-            console.log(env);
-            if (newPlayer) {
-                renderTemplate('newlogin', 'insertion', {
-                    value: env.isDev ? env.sessionID : 123355
-                });
-                butt = $('#enter');
-                txt = $('#seshnum');
-                butt.on('click', () => {
-                    requestSession();
-                });
-                txt.on('keydown', (ev) => {
-                    if (ev.keyCode === '13') {
-                        requestSession();
-                    }
-                });
-                txt.focus();
-            } else {
-                renderGameScreen();
-            }
         };
         let currentState = null;
         const refreshViewCallback = (p) => {
@@ -236,9 +262,6 @@
             let enrolled = false;
             if (currentState) {
                 let c = currentState !== JSON.stringify(p);
-//                console.log(`state changed? %c${c ? 'yes' : 'no'}`, `color: ${c ? 'green' : 'red'};`)
-            } else {
-//                console.log(`no currentState for comparison`);
             }
             currentState = JSON.stringify(p);
             if (p.hasOwnProperty('playersDetail')) {
@@ -248,15 +271,10 @@
 //                    console.log(`%cno player with id ${id} found`, `color: red;`);
                 }
             }
-//            console.log(`p.sessionID: ${p.sessionID}`);
-//            console.log(`p.enrolled: ${p.enrolled}`);
             if (p.sessionID) {
                 if (enrolled) {
                     renderGameScreen();
                 } else {
-//                    if (typeof(p.sessionID) === 'number') {
-//                        console.log();
-//                    }
                     renderTemplate('newlogin', 'insertion', {
                         value: p.isDev ? p.sessionID : ''
                     });
@@ -267,6 +285,7 @@
         };
         let refreshing = false;
         const refreshView = () => {
+//            console.log(`refreshView`);
 //            console.log(`are we already refreshing? ${refreshing}`);
 //            console.log(`refreshView, suspend? %c${suspend}`, `color: ${suspend ? 'green' : 'red'}`);
             // Do not run if suspend = true, i.e. server has shit down and is not yet ready to restart
@@ -287,30 +306,40 @@
 //                console.log(`suspend is true, refreshing is not possible at this time`);
             }
         };
+        const getInitProps = () => {
+            let o = {};
+            let p = window.location.hash;
+//            console.log(p);
+            if (p && p.indexOf('?', 0) > -1) {
+                p = p.split('?');
+//                    console.log(p);
+                if (p.length > 0) {
+//                    console.log(p);
+                    p = p[1].split('&');
+                    p.forEach((s) => {
+                        let ps = s.split('=');
+                        o[ps[0]] = ps[1];
+                    });
+                }
+            }
+//            console.log(o);
+            return o;
+        };
         const onConnect = () => {
-//            console.log(`onConnect, suspend? ${suspend}`);
             connectionWarning(true);
             socket.emit('getPlayerPack', (p) => {
-//                console.log('onConnectCallback, forget this refreshView crap');
-//                console.log(p);
                 isDev = p.isDev;
                 env = Object.assign({}, p);
                 let id = getMinID();
                 clientData.id = id;
-//                clientData.browser = {name: navigator.appName, version: navigator.appVersion, platform: navigator.platform};
-//                console.log(navigator);
-//                clientData.browser = Object.assign({}, navigator);
-//                clientData.browser = navigator;
                 socket.emit('customDataEvent', clientData);
                 id = getID();
                 storageID = getStorageID();
                 document.title = id;
                 $('h2').html(`id: ${id}`);
-//                console.log(`emit addNewPlayer, id: ${id}, socketID: ${socket.id}`);
                 socket.emit('addNewPlayer', {id: id}, (o) => {
                     player = o.player;
                 });
-//                console.log(`player connects, three possibilities exist:`);
                 let sid = false;
                 if (p.storedData) {
                     if (p.storedData.hasOwnProperty('sid')) {
@@ -320,12 +349,142 @@
 //                console.log(` a) no session exists (${!Boolean(sid)}, ${sid})`);
 //                console.log(` b) a session exists which I am not enrolled in`);
 //                console.log(` c) a session exists and I am enrolled on it`);
+
             });
         };
 
-
         let isDev = false;
         let logList = {};
+
+
+        // Type-specific code:
+
+        // Public Voices
+        let vb = $('.buttonVote');
+        let vv = $('.voteVal');
+        let max = 10;
+        let ls = [];
+//        let lid = `pv-${getID().split('?')[0]}-vote`;
+        let lid = null;
+        const validateVote = (inp) => {
+            const value = parseFloat(inp.value);
+            if (value > max) {
+                inp.value = max;
+            }
+            if (value < (-1 * max)) {
+                inp.value = (-1 * max);
+            }
+        };
+        const submitVote = function (evt) {
+            const vi = $(this).parent().find('.voteVal');
+            let o = {
+                src: player.id,
+                team: player.stakeholderID,
+                targ: parseInt(vi.attr('id').split('_')[1]),
+                v: parseInt(vi.val())
+            };
+    //        console.log(o);
+            ls[o.targ] = o.v;
+//            console.log(ls);
+            localStorage.setItem(lid, ls);
+            $(this).attr('disabled', true);
+            vi.attr('disabled', true);
+            socket.emit('pvStakeholderScore', o);
+        };
+        vv = $('.voteVal');
+        const getRemain = () => {
+            let m = max;
+            if (vv) {
+                vv.each(function () {
+                    let v = Math.abs(parseInt($(this).val()));
+                    m -= v;
+//                    console.log(v, m)
+                });
+            }
+            return m;
+        };
+        const viewUpdate = () => {
+            socket.emit('getPlayerPack', (pp) => {
+                console.log(pp.session);
+                enableScorePV(pp.session.round > 0);
+                let s = localStorage.getItem(lid);
+                if (s) {
+                    s = s.split(',');
+                    max = 10;
+                    s.forEach((v, i) => {
+                        if (!isNaN(parseInt(v))) {
+                            max -= parseInt(v);
+                            ls[i] = v;
+                            vv[i].value = v;
+                            $(vv[i]).attr('disabled', true);
+                            $(vb[i]).attr('disabled', true);
+                        }
+                    });
+                }
+
+            });
+        };
+        const onSessionUpdate = () => {
+            viewUpdate();
+            console.log('session update calls viewUpdate');
+        };
+        const initpv = () => {
+
+            lid = `pv-${getID().split('?')[0]}-vote`;
+            vb = $('.buttonVote');
+            vv = $('.voteVal');
+            vb.on('click', submitVote);
+            viewUpdate();
+
+
+            scoreUpdate(getMinID());
+        };
+        const renderVotes = (p) => {
+            let v = p.teamObj.votes;
+            $('#votes').html(v);
+            max = v;
+            vv.each((i, el) => {
+                if (!$(el).prop('disabled')) {
+                    validateVote(el);
+                }
+            })
+            if (v <= 0) {
+                $('#votes').addClass('false');
+                vb.attr('disabled', true);
+                vv.attr('disabled', true);
+            }
+        };
+        const scoreUpdate = (id) => {
+//            console.log(`scoreUpdate: ${id}`);
+//            console.log(`scoreUpdate: ${getMinID()}`);
+            socket.emit('getPlayer', id, (p) => {
+                renderVotes(p)
+            });
+        };
+        const enableScorePV = (boo) => {
+            vb.prop('disabled', !boo);
+            vv.prop('disabled', !boo);
+        };
+        $('.buttonVote').on('click', submitVote);
+        socket.on('scoreUpdate', (o) => {
+            scoreUpdate(o.src);
+//            socket.emit('getPlayer', o.src, (p) => {
+//                renderVotes(p)
+//            });
+        });
+
+        const setupPV = () => {
+
+            initpv();
+//            enableScorePV(false);
+        };
+
+        // End Public Voices
+
+        // End type-specific code
+
+
+
 
         socket.on('onRequestSession', (boo) => {
             onRequestSession(boo);
@@ -344,12 +503,23 @@
             p.html(t);
         });
         socket.on('terminateSession', kickout);
+        socket.on('sessionUpdate', onSessionUpdate);
         socket.on('newSession', onNewSession);
         socket.on('serverShutdown', serverShutdown);
         socket.on('ping', () => {
             onPinged();
+            console.log(`i got pinged`);
+        });
+        socket.on('onAssignTeams', (id) => {
+            return;
+            console.log(`I have a Team: ${id}`);
+            console.log(env.gamedata.teams[id]);
+            console.log(env.gamedata.teams);
+            $('#team').find('span').html(env.gamedata.teams[id].title);
+//            debugger;
         });
         window.showLog = getLogs;
+        window.getRemain = getRemain;
         //
         //        init();
 

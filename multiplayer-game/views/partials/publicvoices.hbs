@@ -1,0 +1,77 @@
+<p>OK, I am a Public Voices thing</p>
+<div>Votes remaining: <span id='votes' class='highlight'>{{teamObj.votes}}</span></div>
+<table>
+    <tbody>
+        <tr><td><b>id</b></td><td><b>title</b></td><td></td></tr>
+        {{#each mainTeams}}<tr><td>{{id}}</td><td>{{title}}</td><td><input class='voteVal' id='voteVal_{{id}}' style='width: 40px;' oninput='validateVote(this)' type='number' value='0'><button class='buttonVote' id='buttonVote_{{id}}'>Submit</button></td></tr>{{/each}}
+    </tbody>
+</table>
+
+<script>
+    setupPV();
+//    let vb = $('.buttonVote');
+//    let vv = $('.voteVal');
+//    let max = 10;
+//    let ls = [];
+//    let lid = `pv-${getID()}-vote`;
+//    const validateVote = (inp) => {
+//        const value = parseFloat(inp.value);
+//        if (value > max) {
+//            inp.value = max;
+//        }
+//        if (value < (-1 * max)) {
+//            inp.value = (-1 * max);
+//        }
+//    };
+//    const submitVote = function (evt) {
+//        const vi = $(this).parent().find('.voteVal');
+//        let o = {
+//            src: player.id,
+//            team: player.stakeholderID,
+//            targ: parseInt(vi.attr('id').split('_')[1]),
+//            v: parseInt(vi.val())
+//        };
+////        console.log(o);
+//        ls[o.targ] = o.v;
+//        console.log(ls);
+//        localStorage.setItem(lid, ls);
+//        $(this).attr('disabled', true);
+//        vi.attr('disabled', true);
+//        socket.emit('pvStakeholderScore', o);
+//    };
+//    const initpv = () => {
+//        let s = localStorage.getItem(lid);
+//        if (s) {
+//            s = s.split(',');
+//            console.log(typeof(s));
+//            s.forEach((v, i) => {
+//                console.log(i, v);
+//                if (v !== undefined) {
+//                    vv[i].value = v;
+//                    $(vv[i]).attr('disabled', true);
+//                    $(vb[i]).attr('disabled', true);
+//                }
+//            });
+//        }
+//    };
+//    $('.buttonVote').on('click', submitVote);
+//    socket.on('scoreUpdate', (o) => {
+//        socket.emit('getPlayer', o.src, (p) => {
+//            let v = p.teamObj.votes;
+//            $('#votes').html(v);
+//            max = v;
+//            vv.each((i, el) => {
+//                if (!$(el).prop('disabled')) {
+//                    validateVote(el);
+//                }
+//            })
+//            if (v <= 0) {
+//                $('#votes').addClass('false');
+//                vb.attr('disabled', true);
+//                vv.attr('disabled', true);
+//            }
+//        });
+//    });
+//    console.log('can we get started?: ' + localStorage.getItem(lid));
+//    initpv();
+</script>

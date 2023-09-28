@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake players</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+        <script src="/socket.io/socket.io.js"></script>
+<!--    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>-->
+    <link rel='stylesheet' href='css/basics.css'>
+</head>
+
+<body>
+    <h1>Generate fake players for development</h1>
+    <p id='summary'></p>
+    <div id='players'></div>
+    <div>
+        <button id='launch'>Launch 10 players</button>
+        <button id='close'>Close 10 players</button>
+    </div>
+    <button id='generate'>Generate fake</button>
+    <button id='generate10'>Generate 10 fakes</button>
+    <button id='generate70'>Generate 70 fakes</button>
+    <div>
+        <button id='reload'>Reload old fakes</button>
+    </div>
+    <div>
+        <button id='enroll'>Enroll all fakes</button>
+    </div>
+    <script>
+        const socket = io();
+        const buttgen = document.getElementById('generate');
+        const buttgen10 = document.getElementById('generate10');
+        const buttgen70 = document.getElementById('generate70');
+        const buttenr = document.getElementById('enroll');
+        const buttrel = document.getElementById('reload');
+        const buttlau = document.getElementById('launch');
+        const buttclo = document.getElementById('close');
+        const storeID = 'susfakeplayers';
+        const storeIDo = 'susfakeplayersObject';
+        const storeNum = 'susfakeplayerscount';
+        const storeMake = 'susfakeplayerstomake';
+        let fakes = [];
+        let fakesObj = {};
+        let clientData = {role: 'fakePlayer'};
+        let launched = [];
+        const rounder = (n) => {
+            if (n < 100) {
+                n = '0' + n;
+            }
+            if (n < 10) {
+                n = '0' + n;
+            }
+            return n;
+        };
+        const regenerate = () => {
+            let n = parseInt(localStorage.getItem(storeMake));
+//            let n2 = parseInt(localStorage.getItem('storeMake'));
+//            console.log(n, typeof(n));
+//            console.log(n2, typeof(n2), n2 > 0);
+            if (n > 0) {
+                n--;
+                localStorage.setItem(storeMake, n);
+//                setTimeout(regenerate, 200);
+                generate();
+            } else {
+                alert('dunne')
+            }
+        }
+        const generate10 = () => {
+            localStorage.setItem(storeMake, 10);
+            regenerate();
+        };
+        const generate70 = () => {
+            localStorage.setItem(storeMake, 35);
+            regenerate();
+        };
+        const generate = () => {
+            socket.emit('getPlayersDetail', (d) => {
+                let l = Object.keys(d).length + 1;
+                let id = `f-${rounder(l)}`;
+                let fs = localStorage.getItem(storeID);
+                let fso = localStorage.getItem(storeIDo);
+                if (fs) {
+                    fakes = JSON.parse(fs);
+                }
+                if (fso) {
+                    fakesObj = JSON.parse(fso);
+                }
+                fakes.push(id);
+                fakesObj[id] = socket.id;
+                clientData.id = id;
+                socket.emit('customDataEvent', clientData);
+                localStorage.setItem(storeID, JSON.stringify(fakes));
+                localStorage.setItem(storeIDo, JSON.stringify(fakesObj));
+                localStorage.setItem(storeNum, fakes.length);
+                socket.emit('addNewPlayer', {id: id, fake: true}, (o) => {
+//                    player = o.player;
+                    console.log(o);
+//                    regenerate();
+                    window.location.reload();
+                });
+
+            });
+//            window.location.reload();
+        };
+        const enroll = () => {
+            socket.emit('getPlayerPack', (o) => {
+                if (Boolean(o.sessionID)) {
+                    let pl = o.playersDetail;
+                    for (var p in pl) {
+                        if (pl[p].fake && !pl[p].enrolled) {
+                            let ro = {player: `player-${pl[p].id}`, session: o.sessionID};
+                            socket.emit('requestSession', ro);
+                        }
+                    }
+                } else {
+                    alert(`no can do, session isn't ready yet`);
+                }
+            })
+        };
+        const reload = () => {
+            let r = localStorage.getItem(storeIDo);
+            r = JSON.parse(r);
+        };
+        const launch = () => {
+            socket.emit('getPlayersDetail', (d) => {
+                let s = 'plf';
+                launched = [];
+//                console.log();
+                for (var i = 0; i < 10; i ++) {
+                    let id = `${window.location.origin}#${s}-${(Object.values(d).length + i)}?autoenroll=true`;
+//                    console.log(window.location)
+//                    window.open(id;
+                    let t = 1000 + (i * 1000);
+                    setTimeout(() => {
+//                        console.log(id);
+                        let w = window.open(id);
+                        launched.push(w);
+                    }, t);
+                }
+
+            });
+        };
+        const closeLaunched = () => {
+            launched.forEach((w) => {
+                w.close();
+            });
+        };
+        buttgen.addEventListener('click', generate);
+        buttgen10.addEventListener('click', generate10);
+        buttgen70.addEventListener('click', generate70);
+        buttenr.addEventListener('click', enroll);
+        buttrel.addEventListener('click', reload);
+        buttlau.addEventListener('click', launch);
+        buttclo.addEventListener('click', closeLaunched);
+        socket.on('connect', function () {
+            socket.emit('customDataEvent', {role: 'fakePlayerEngine'});
+            console.log('connex');
+//            socket.emit('fakePlayersAreHere');
+        });
+        socket.on('serverShutdown', function () {
+            console.log(`unconnex: ${localStorage.getItem(storeNum)}`);
+            localStorage.setItem(`${storeNum}Pers`, localStorage.getItem(storeNum))
+        });
+        socket.on('getFakePlayers', (n) => {
+            console.clear();
+            console.log(`make ${n} fake players`);
+            localStorage.setItem(storeMake, n);
+            regenerate();
+        });
+        regenerate();
+    </script>
+    </body>
+</html>

@@ -1,17 +1,12 @@
 <div id='game'>
     <!--    <p>This is the player client, it requires a master before it can init</p>    -->
     <p id='stakeholder'></p>
-    <p id='playerID'>playerID: {{playerID}}</p>
+    <p id='playerID'>PlayerID: {{id}}</p>
+    <p id='team'>Team: <span>{{stakeholder}}</span></p>
     <p id='gameTimer'>timer:</p>
     <p id='active'></p>
     <p id='message'></p>
-    <p id='votesRemaining'></p>
-    <p id='votesReceived'></p>
-    <p id='status' style='display: none;'></p>
-    <div id='voting' style='display: none;'>
-        voting booth:
+    <div id='activity'>
+    {{playerPartial partialName ob}}
     </div>
 </div>
-<script>
-//    console.log('i am him');
-</script>

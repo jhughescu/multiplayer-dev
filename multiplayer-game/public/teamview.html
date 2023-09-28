@@ -1,0 +1,36 @@
+<table>
+    <tbody>
+        <tr>
+            <td>
+               {{#each team}}
+                <table>
+                    <tbody>
+                        <tr>
+                            <th>{{title}}</th>
+                            <th></th>
+                        </tr>
+<!--
+                        <tr>
+                            <td>votes:</td>
+                            <td>{{votes}}</td>
+                        </tr>
+                        <tr>
+                            <td>likes:</td>
+                            <td>{{likes}}</td>
+                        </tr>
+-->
+                        <tr>
+                            <td>weighting:</td>
+                            <td>{{weight}}</td>
+                        </tr>
+                        <tr>
+                            <td>team members:</td>
+                            <td>{{teamSize}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                {{/each}}
+            </td>
+        </tr>
+    </tbody>
+</table>

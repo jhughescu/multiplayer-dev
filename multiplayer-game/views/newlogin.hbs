@@ -8,8 +8,8 @@
     };
     requestSession = () => {
         let o = {session: txt.val().replace(/ /gm, ''), player: staticID};
-//        console.log('request session:');
-//        console.log(o);
+        console.log('request session:');
+        console.log(o);
         socket.emit('requestSession', o);
     };
     butt = $('#enter');
@@ -23,4 +23,11 @@
         }
     });
     txt.focus();
+    if (getInitProps().autoenroll) {
+        console.log('auto enroll this');
+        let d = 1000 + (Math.random() * 2000);
+        d = 100;
+//        setTimeout(requestSession, d);
+        requestSession();
+    }
 </script>

@@ -16,12 +16,24 @@
 
 <body>
     <h1>Master </h1>
-    <h2></h2>
-    <p>This is the master client, it listens for player connections</p>
+    <h2>session: <span>n/a</span></h2>
+    <p>This is the admin screen</p>
     <p id='message'></p>
-    <button id='startSession'>Start Session</button>
-    <button id='endSession'>End Session</button>
-    <button id='listPlayers'>List players</button>
+    <div>
+        <button id='startSession'>Start Session</button>
+        <button id='endSession'>End Session</button>
+    </div>
+    <div>
+        <button id='assignTeams'>Assign Teams</button>
+    </div>
+    <div>
+        <button class='startRound' id='r1'>Start Round 1</button>
+        <button class='startRound' id='r2'>Start Round 2</button>
+    </div>
+    <br>
+    <div>
+        <button id='listPlayers'>List players</button>
+    </div>
     <div id='players'></div>
 
     <div>
@@ -37,11 +49,8 @@
         const RESETBTN = `resetbtn-`;
         let clientData = {role: 'admin'};
         let storedGame = null;
-//        let storedGame = localStorage.getItem('susgame');
-//        if (storedGame) {
-//            storedGame = JSON.parse(storedGame);
-//        }
-//        console.log(`storedGame: ${JSON.stringify(storedGame)}`);
+        let allEnrolled = null;
+        let env = null;
 
         const buttonSetup = () => {
             let b = document.getElementsByClassName('pingBtn');
@@ -60,23 +69,57 @@
                 });
             });
         };
-        let ssb = document.getElementById('startSession');
-        ssb.addEventListener('click', (evt) => {
-            startNewSession();
+        //
+//        let ssb = document.getElementById('startSession');
+//        ssb.addEventListener('click', (evt) => {
+//            startNewSession();
+//        });
+
+        const buttonStartSesh = $('#startSession');
+        const buttonEndSesh = $('#endSession');
+        const buttonsStartRound = $('.startRound');
+        const buttonAssignTeams = $('#assignTeams');
+
+//        let esb = document.getElementById('endSession');
+//        esb.addEventListener('click', (evt) => {
+//            adminTerminateSession();
+//        });
+        /*
+        let bStartRound = $('.startRound');
+        bStartRound.on('click', function () {
+            let id = $(this).attr('id');
+            let r = parseInt(id.replace(/[^0-9]/g, ''));
+            socket.emit('startRound', r);
+            enableButton(id, false);
         });
-        let esb = document.getElementById('endSession');
-        esb.addEventListener('click', (evt) => {
-            adminTerminateSession();
+        */
+
+
+        //
+        /*
+        let atb = document.getElementById('assignTeams');
+        atb.addEventListener('click', (evt) => {
+            assignTeams();
         });
+        */
+        //
         let lpb = document.getElementById('listPlayers');
         lpb.addEventListener('click', (evt) => {
             listPlayers();
         });
+        //
         const enableButton = (b, boo) => {
-            document.querySelector(`#${b}`).disabled = !boo;
+//            console.log(b);
+            if (typeof(b) === 'string') {
+                document.querySelector(`#${b}`).disabled = !boo;
+            } else {
+                b.prop('disabled', !boo);
+//                console.log(b.attr('id'), boo);
+            }
+
         };
         const setSessionButtons = (start) => {
-            console.log(`setup session buttons, has a session started? ${start ? 'yes' : 'no'}`);
+//            console.log(`setup session buttons, has a session started? ${start ? 'yes' : 'no'}`);
             enableButton('endSession', start);
             enableButton('startSession', !start);
         };
@@ -86,10 +129,55 @@
                 getGameToStore();
             });
         };
-        const newSessionStarted = (s) => {
-            let str = `session: ${s.sid.substr(0, 3)} ${s.sid.substr(3, 3)} ${s.sid.substr(6)}`;
-            $('h2').html(str);
+        const showTeams = (t) => {
+            if (t) {
+                renderTemplate('teamview', 'controlPanel', {team: Object.values(t)});
+            }
+        };
+        const assignTeamsFunk = () => {
+            enableButton('assignTeams', false);
+//            getGameToStore();
+            socket.emit('assignTeams', (t) => {
+//                showTeams(t);
+//                console.log(`returned teams:`);
+//                console.log(t);
+                listPlayers();
+                enableRoundStart(1);
+                getGameToStore();
+            });
+        }
+        const assignTeams = () => {
+            if (allEnrolled) {
+                assignTeamsFunk();
+            } else {
+                let c = confirm('Some active players are not yet enrolled, are you sure you want to continue? (Players who enroll later will go into the Public Voices teams)');
+                if (c) {
+                    assignTeamsFunk();
+                }
+            }
+        };
+        const previewTeams = () => {
+            console.log('previewTeams');
+//            alert('previewTeams not implemented');
+            socket.emit('previewTeams', (t) => {
+                console.log(t);
+                showTeams(t);
+//                renderTemplate('teamview', 'controlPanel', {team: Object.values(t)})
+            });
+        };
+        const newSessionStarted = (o) => {
+//            let s = o.s;
+//            let s = Object.assign(o.s, {});
+            let s = o.hasOwnProperty('s') ? o.s : o;
+//            console.log('newSessionStarted');
+//            console.log(o);
+//            console.log(s);
+
+            let str = `${s.sid.substr(0, 3)} ${s.sid.substr(3, 3)} ${s.sid.substr(6)}`;
+//            console.log(str);
+            $('h2').find('span').html(str);
             setSessionButtons(true);
+            enableButton(buttonAssignTeams, true);
         }
         const playerDisplay = (p, i) => {
             var e = document.getElementById('players');
@@ -146,22 +234,37 @@
                 if (p > 0) {
                     let conf = confirm(`Are you sure you want to end this session? There are currently ${p} enrolled players.`);
                     if (conf) {
-                        conf = confirm('Are you REALLY sure?');
-                        if (conf) {
-                            socket.emit('adminTerminateSession');
-                        }
+                        socket.emit('adminTerminateSession');
                     }
+//                    if (conf) {
+//                        conf = confirm('Are you REALLY sure?');
+//                        if (conf) {
+//                            socket.emit('adminTerminateSession');
+//                        }
+//                    }
                 } else {
                     socket.emit('adminTerminateSession');
                 }
             });
         };
         const terminateSession = () => {
-            console.log('terminate the session, kill the localStorage');
+//            console.log('terminate the session, kill the localStorage');
             localStorage.removeItem('susgame');
             localStorage.clear();
-            $('h2').html(``);
             setSessionButtons(false);
+            $('h2').find('span').html(`ended`);
+        };
+        const enableRoundStart = (n) => {
+            // Allow a given round to be triggered
+            // n is round 1, 2 etc, hence subtract one to address the array of buttons
+            enableButton($(buttonsStartRound[(n - 1)]), true);
+        };
+        const startRound = function () {
+            // NOTE do not alter this to an arrow function!
+            let id = $(this).attr('id');
+            let r = parseInt(id.replace(/[^0-9]/g, ''));
+            socket.emit('startRound', r);
+            enableButton(id, false);
         };
         const buttonSetupNONEED = () => {
             let b = document.getElementsByClassName('pingBtn');
@@ -181,11 +284,18 @@
         }
         const listPlayers = () => {
             socket.emit('getPlayersDetail', (d) => {
-                let p = Object.values(d);
+//                console.log('playersDetail:');
 //                console.log(d);
-//                console.log(p);
+                let p = Object.values(d);
+                p.forEach((pn) => {
+//                    console.log(pn.stakeholder);
+                    pn.stakeholderID = pn.stakeholder;
+                    pn.assigned = pn.stakeholder > -1;
+                    pn.stakeholder = pn.stakeholder > -1 ? Object.values(env.gamedata.teams)[pn.stakeholder].title : 'unassigned';
+                });
                 updatePlayersView(p);
             });
+//            console.log(env);
         };
         //
         // Methods that could potentially be made universal
@@ -212,6 +322,7 @@
             let sg = JSON.stringify(g);
 //            console.log(`game stored now: ${sg}`);
             localStorage.setItem('susgame', sg);
+            console.log(`storeGame emits storedGameUpdated`);
             socket.emit('storedGameUpdated', g);
             listPlayers();
         };
@@ -220,10 +331,26 @@
             socket.emit('getGameMin', (g) => {
 //                console.log(`this is the only way to get the game data from the server`);
 //                console.log(`the callback, setItem susgame: ${JSON.stringify(g)} (${Object.keys(g.p).length} elements)`);
+                console.log('I got game min');
+                console.log(g);
+                console.log(g.s);
                 storeGame(g);
             })
         };
         const hasStoredSession = (o) => {
+            // looks for a stored session ID in an object, return it if it exists or false if it does not
+            let hss = false;
+            if (o.hasOwnProperty('s')) {
+                if (o.s.hasOwnProperty('sid')) {
+                    // if sid exists it could either be a number/string or null
+                    if (o.s.sid) {
+                        hss = true;
+                    }
+                }
+            }
+            return hss;
+        };
+        const hasStoredSessionV1 = (o) => {
             // looks for a stored session ID in an object, return it if it exists or false if it does not
             let hss = false;
             if (o.hasOwnProperty('sid')) {
@@ -233,7 +360,19 @@
                 }
             }
             return hss;
-        }
+        };
+        const enrollmentUpdate = (o) => {
+//            console.log(`enrollmentUpdate: ${o.allIn}`)
+//            atb.disabled = !o.allIn;
+//            atb.disabled = false;
+            enableButton(buttonAssignTeams, true);
+            allEnrolled = o.allIn;
+            if (o.allIn) {
+                setTimeout(() => {
+//                    alert('all players enrolled');
+                }, 500);
+            }
+        };
         const onRequestSession = (o) => {
             if (o.success) {
                 getGameToStore();
@@ -254,27 +393,56 @@
                 renderTemplate('playersBasic', 'controlPanel', o);
             });
         };
+        const getGameData = () => {
+            socket.emit('requestGameData', (d) => {
+                console.log(d)
+;            })
+        };
+        //
+        const init = () => {
+            console.log('init')
+            setSessionButtons(false);
+            enableButton(buttonEndSesh, false);
+            enableButton(buttonsStartRound, false);
+            enableButton(buttonAssignTeams, false);
+        };
+        //
+        buttonStartSesh.on('click', startNewSession);
+        buttonEndSesh.on('click', adminTerminateSession);
+        buttonsStartRound.on('click', startRound);
+        buttonAssignTeams.on('click', assignTeams);
+        //
 
         socket.on('connect', () => {
             console.log('admin connect');
             enableButton('endSession', false);
             enableButton('startSession', false);
             storedGame = getStoredGame();
+            console.log('storedGame');
+            console.log(storedGame);
             if (storedGame) {
                 console.log(`storedGame found of type ${typeof(storedGame)}: ${JSON.stringify(storedGame)} (${Object.keys(storedGame.p).length} elements)`);
-                console.log(storedGame);
+
                 storedGame.version = 2;
                 storedGame.elements = Object.keys(storedGame.p).length;
-                console.log(`sending stored game to server`);
+                console.log('on connect emits stored game found');
                 socket.emit('storedGameFound', storedGame);
                 let s = hasStoredSession(storedGame);
-                setSessionButtons(Boolean(s.sid));
-//                setSessionButtons(true);
+                console.log(s)
+                console.log(storedGame.sid)
+//                setSessionButtons(Boolean(s.sid));
+                setSessionButtons(Boolean(storedGame.sid));
+                if (s) {
+                    newSessionStarted(storedGame);
+                }
             } else {
-                console.log('make the button work');
                 setSessionButtons(false);
             }
             socket.emit('customDataEvent', clientData);
+            socket.emit('getPlayerPack', (p) => {
+                isDev = p.isDev;
+                env = Object.assign({}, p);
+            });
         });
         socket.on('onPlayerConnect', (msg) => {
             onPlayerConnect(msg);
@@ -300,7 +468,7 @@
             newPlayer(players);
         });
         socket.on('onAddNewPlayer', () => {
-            console.log('onAddNewPlayer');
+//            console.log('onAddNewPlayer');
             getGameToStore();
         });
         socket.on('serverShutdown', onServerShutdown);
@@ -313,6 +481,7 @@
         });
         socket.on('terminateSession', terminateSession);
         socket.on('newSession', newSessionStarted);
+        socket.on('enrollmentUpdate', enrollmentUpdate);
         socket.on('onRequestSession', (o) => {
             onRequestSession(o);
         });
@@ -320,8 +489,12 @@
 
         storedGame = getStoredGame();
 
+        init();
+
         window.updateSession = updateSession;
+        window.previewTeams = previewTeams;
         window.getPlayerIDs = getPlayerIDs;
+        window.getGameData = getGameData;
 
 //        socket.emit('getPlayers');
 
