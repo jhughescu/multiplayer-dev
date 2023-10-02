@@ -178,15 +178,9 @@
             let o = {
                 playerID: staticID
             };
-//            socket.emit('testEvent', 'renderGameScreen');
             socket.emit('getPlayerPack', (o) => {
                 player = prepPlayer(o.playersDetail[getMinID()]);
-//                console.log('render gs');
-//                console.log(o);
-//                return;
-//                debugger;
                 if (o.session.assigned) {
-//                    if (Object.values(env.gamedata.teams)[player.stakeholderID]) {
                     if (player.stakeholderID > -1) {
                         player.partialName = Object.values(env.gamedata.teams)[player.stakeholderID].hasMax ? 'stakeholder' : 'publicvoices';
                     } else{
@@ -197,10 +191,6 @@
                 }
                 player = Object.assign(env.gamedata, player);
                 renderTemplate('game', 'insertion', player);
-//                console.log('player:');
-//                console.log(player);
-//                console.log(player.stakeholderID);
-//                console.log(env.gamedata);
             });
         };
         const onNewSession = () => {
@@ -454,12 +444,16 @@
                 vv.attr('disabled', true);
             }
         };
-        const scoreUpdate = (id) => {
-//            console.log(`scoreUpdate: ${id}`);
+        const scoreUpdate = (o) => {
+//            console.log(`scoreUpdate: ${o.src}`);
 //            console.log(`scoreUpdate: ${getMinID()}`);
-            socket.emit('getPlayer', id, (p) => {
-                renderVotes(p)
-            });
+
+            if (o.src === getMinID()) {
+//                console.log(`OK, we can go`);
+                socket.emit('getPlayer', o.src, (p) => {
+                    renderVotes(p)
+                });
+            }
         };
         const enableScorePV = (boo) => {
             vb.prop('disabled', !boo);
@@ -467,7 +461,8 @@
         };
         $('.buttonVote').on('click', submitVote);
         socket.on('scoreUpdate', (o) => {
-            scoreUpdate(o.src);
+            scoreUpdate(o);
+//            scoreUpdate(o.src);
 //            socket.emit('getPlayer', o.src, (p) => {
 //                renderVotes(p)
 //            });

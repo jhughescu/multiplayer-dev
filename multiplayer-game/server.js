@@ -70,8 +70,6 @@ class Session {
     round;
     setAssigned(boo) {
         this.assigned = boo;
-//        console.log(`setting session.assigned to ${boo}`);
-//        console.log(this);
     }
     setRound(n) {
         this.round = n;
@@ -81,8 +79,6 @@ class Session {
         return this.round;
     }
     getCurrentScores() {
-//        console.log(this.scores);
-//        console.log(this.round);
         return this.scores[`round${this.round}`];
     }
 };
@@ -111,14 +107,18 @@ const writeLogFile = (id, c, msg) => {
     if (msg) {
         c = Object.assign({msg: msg}, c);
     }
-    fs.writeFile(f, JSON.stringify(c, null, 4), () => {/*console.log(`log written: ${f}`)*/})
+    fs.writeFile(f, JSON.stringify(c, null, 4), () => {
+        console.log(`log written: ${f}`)
+    })
 };
 const updateLogFile = (id, c, msg) => {
     let f = `../logs/log.${id}.json`;
     if (msg) {
         c = Object.assign({msg: msg}, c);
     }
-    fs.writeFile(f, JSON.stringify(c, null, 4), () => {/*console.log(`log written: ${f}`)*/})
+    fs.writeFile(f, JSON.stringify(c, null, 4), () => {
+        console.log(`log written: ${f}`);
+    })
 };
 const consoleLog = (m) => {
     const stack = new Error().stack;
@@ -272,6 +272,9 @@ const setSessionID = () => {
 const getSessionID = () => {
     return sessionID;
 };
+const getSession = (cb) => {
+    cb(session);
+};
 const requestSession = (o) => {
 //    if the session ID passed matches the session ID for the app, return the passed player id for verification, otherwise return false:
     let ro = {
@@ -351,6 +354,8 @@ const pvStakeholderScore = (o) => {
                             s.t += v;
                         });
                         s.m = s.t / s.a.length;
+                        // round to 2 DP
+                        s.m = Math.round(s.m * 100) / 100;
                     });
                 });
                 updateLogFile('theob', ob);
@@ -367,8 +372,13 @@ const pvStakeholderScore = (o) => {
                 pl.scores[r].push({targ: o.targ, v: o.v});
                 // Update the vote total in the scoring player
                 pl.teamObj.votes -= Math.abs(o.v);
+                if (pl.teamObj.votes <= 0) {
+//                    console.log(`handle a zero count for votes`);
+                    // No, we don't care abotu zero votes - votes are averaged over votes cast, hence 0 votes have no effect anyway.
+                }
                 updateLogFile('playersDetail', playersDetail);
-                getSocketFromID(o.src).emit('scoreUpdate', o);
+//                getSocketFromID(o.src).emit('scoreUpdate', o);
+                io.emit('scoreUpdate', o);
                 //
                 session.getCurrentScores().pvVotes = ob;
                 updateLogFile('session', session);
@@ -891,36 +901,6 @@ const assignTeams = (cb) => {
     }
     cb(gamedata.teams);
 };
-const assignTeamsV1 = (cb) => {
-
-    let teams = {};
-    let d = gamedata;
-    if (d.hasOwnProperty('teams')) {
-        d = d.teams;
-    } else {
-        d = d[d.definitions['teams']];
-    }
-    teams = previewDistribution(d);
-    console.log(`assignTeams#: ${Object.keys(gamedata.teams).length} teams`);
-    for (var i in gamedata.teams) {
-        console.log(gamedata.teams[i]);
-        gamedata.teams[i].team = teams[i].team;
-        gamedata.teams[i].teamSize = teams[i].teamSize;
-        console.log(` - teamsize: ${teams[i].teamSize}`);
-        gamedata.teams[i].team.forEach((p) => {
-            console.log(` - - ${p}`);
-            if (playersDetail[p]) {
-                let sock = playersMap.get(playersDetail[p].socketID);
-                sock.emit('onAssignTeams', i);
-            } else {
-                console.log(`${p} not defined in playersDetail`);
-            }
-        });
-
-    }
-//    console.log(playersMap);
-    cb(teams);
-};
 const initApp = () => {
     consoleLog('~ ~ ~ ~ ~ ~ ~ ~');
     consoleLog('~ ~ ~ ~ ~ ~ ~ ~');
@@ -987,6 +967,9 @@ io.on('connection', (socket) => {
     socket.on('updateSession', () => {
 //        console.log('onUpdateSession');
         io.emit('onUpdateSession');
+    });
+    socket.on('getSession', (cb) => {
+        getSession(cb);
     });
     socket.on('requestSession', (id) => {
 //        console.log(`request session with ID ${id}`);
@@ -1109,6 +1092,32 @@ app.get('/session', (req, res) => {
 app.get('/test', (req, res) => {
     const d = {title: 'awesome', answer: 'Oh hell yes'};
     res.render('test', d);
+});
+app.get('/download-session', (req, res) => {
+    console.log('go down the route');
+    let ob = session;
+    const csvWriterInstance = csvWriter({
+        path: ob,
+        header: [
+            { id: 'name', title: 'Name' },
+            { id: 'score', title: 'Score' },
+        ],
+    });
+
+    csvWriterInstance.writeRecords(ob)
+        .then(() => {
+            res.download(ob, (err) => {
+                if (err) {
+                    console.error('Error sending CSV:', err);
+                }
+                // Delete the CSV file after sending
+                fs.unlinkSync(ob);
+            });
+        })
+        .catch((error) => {
+            console.error('Error writing CSV:', error);
+            res.status(500).send('Internal Server Error - route not found');
+        });
 });
 app.get('/download-csv', (req, res) => {
     console.log('go down the route');

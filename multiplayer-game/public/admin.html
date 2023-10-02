@@ -33,6 +33,7 @@
     <br>
     <div>
         <button id='listPlayers'>List players</button>
+        <button id='showScores'>Show scores</button>
     </div>
     <div id='players'></div>
 
@@ -79,29 +80,7 @@
         const buttonEndSesh = $('#endSession');
         const buttonsStartRound = $('.startRound');
         const buttonAssignTeams = $('#assignTeams');
-
-//        let esb = document.getElementById('endSession');
-//        esb.addEventListener('click', (evt) => {
-//            adminTerminateSession();
-//        });
-        /*
-        let bStartRound = $('.startRound');
-        bStartRound.on('click', function () {
-            let id = $(this).attr('id');
-            let r = parseInt(id.replace(/[^0-9]/g, ''));
-            socket.emit('startRound', r);
-            enableButton(id, false);
-        });
-        */
-
-
-        //
-        /*
-        let atb = document.getElementById('assignTeams');
-        atb.addEventListener('click', (evt) => {
-            assignTeams();
-        });
-        */
+        const buttonShowScores = $('#showScores');
         //
         let lpb = document.getElementById('listPlayers');
         lpb.addEventListener('click', (evt) => {
@@ -277,25 +256,86 @@
             });
         };
         const updatePlayersView = (p) => {
-//            console.log(`update the view with ${JSON.stringify(p)}`);
-//            console.log(p)
             renderTemplate('playerList', 'controlPanel', {players: p});
             buttonSetup();
         }
         const listPlayers = () => {
             socket.emit('getPlayersDetail', (d) => {
-//                console.log('playersDetail:');
-//                console.log(d);
                 let p = Object.values(d);
                 p.forEach((pn) => {
-//                    console.log(pn.stakeholder);
                     pn.stakeholderID = pn.stakeholder;
                     pn.assigned = pn.stakeholder > -1;
                     pn.stakeholder = pn.stakeholder > -1 ? Object.values(env.gamedata.teams)[pn.stakeholder].title : 'unassigned';
                 });
                 updatePlayersView(p);
             });
-//            console.log(env);
+        };
+        const getScoreObject = (o) => {
+            let oo = {hasPV: false, teams: []};
+            let t = JSON.parse(JSON.stringify(env.gamedata.mainTeams));
+//            console.log(t);
+//            console.log(o);
+//            console.log(o.getCurrentScores());
+            if (o.round) {
+                if (o.round > 0) {
+                    let sc = o.scores[`round${o.round}`];
+                    let scPV = sc.pvVotes;
+                    if (scPV) {
+                        let summ = scPV.summary;
+                        oo.hasPV = true;
+//                        console.log(scPV);
+                        t.forEach((v, id) => {
+                            let ot = {
+                                title: v.title,
+                                pv1: {l: '', m: 0},
+                                pv2: {l: '', m: 0}
+                            };
+                            let ts = summ[`t-${id}`];
+                            if (ts.hasOwnProperty('v-5')) {
+                                ts['v-5'].l = ts['v-5'].a.toString();
+                                ot.pv1 = Object.assign(ot.pv1, ts['v-5']);
+                            }
+                            if (ts.hasOwnProperty('v-6')) {
+                                ts['v-6'].l = ts['v-6'].a.toString();
+                                ot.pv2 = Object.assign(ot.pv2, ts['v-6']);
+                            }
+                            oo.teams.push(ot);
+    //                        console.log(id, summ[]);
+                        });
+                    }
+                }
+            }
+//            console.log(oo);
+            return oo;
+        };
+        const updateScores = (s) => {
+            if ($('#controlPanel').find('.scorePV').length > 0) {
+                showScores();
+            }
+            return;
+            console.log('hup');
+            console.log(s);
+            console.log($('#controlPanel').find('.scorePV'));
+            if ($('#controlPanel').find('.scorePV').length > 0) {
+                let o = getScoreObject(s);
+                if (o.hasPV) {
+                    renderTemplate('scores', 'controlPanel', o);
+                }
+            }
+        };
+        const showScores = () => {
+            socket.emit('getSession', (s) => {
+                if (s) {
+                    let o = getScoreObject(s);
+                    if (o.hasPV) {
+                        renderTemplate('scores', 'controlPanel', o);
+                    } else {
+                        $('#controlPanel').html('no PV votes found');
+                    }
+                } else {
+                    $('#controlPanel').html('no session found');
+                }
+            });
         };
         //
         // Methods that could potentially be made universal
@@ -400,7 +440,7 @@
         };
         //
         const init = () => {
-            console.log('init')
+//            console.log('init')
             setSessionButtons(false);
             enableButton(buttonEndSesh, false);
             enableButton(buttonsStartRound, false);
@@ -411,25 +451,26 @@
         buttonEndSesh.on('click', adminTerminateSession);
         buttonsStartRound.on('click', startRound);
         buttonAssignTeams.on('click', assignTeams);
+        buttonShowScores.on('click', showScores);
         //
 
         socket.on('connect', () => {
-            console.log('admin connect');
+//            console.log('admin connect');
             enableButton('endSession', false);
             enableButton('startSession', false);
             storedGame = getStoredGame();
-            console.log('storedGame');
-            console.log(storedGame);
+//            console.log('storedGame');
+//            console.log(storedGame);
             if (storedGame) {
-                console.log(`storedGame found of type ${typeof(storedGame)}: ${JSON.stringify(storedGame)} (${Object.keys(storedGame.p).length} elements)`);
+//                console.log(`storedGame found of type ${typeof(storedGame)}: ${JSON.stringify(storedGame)} (${Object.keys(storedGame.p).length} elements)`);
 
                 storedGame.version = 2;
                 storedGame.elements = Object.keys(storedGame.p).length;
-                console.log('on connect emits stored game found');
+//                console.log('on connect emits stored game found');
                 socket.emit('storedGameFound', storedGame);
                 let s = hasStoredSession(storedGame);
-                console.log(s)
-                console.log(storedGame.sid)
+//                console.log(s)
+//                console.log(storedGame.sid)
 //                setSessionButtons(Boolean(s.sid));
                 setSessionButtons(Boolean(storedGame.sid));
                 if (s) {
@@ -485,7 +526,11 @@
         socket.on('onRequestSession', (o) => {
             onRequestSession(o);
         });
-
+        //
+        socket.on('scoreUpdateNoooooo', updateScores);
+        socket.on('scoreUpdate', (o) => {
+            updateScores(o);
+        });
 
         storedGame = getStoredGame();
 

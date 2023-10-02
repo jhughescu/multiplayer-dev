@@ -23,3 +23,9 @@ button:disabled {
 .false {
     color: red;
 }
+.centered {
+    text-align: center;
+}
+table.scorePV {
+    width: 200px;
+}
