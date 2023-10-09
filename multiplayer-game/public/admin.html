@@ -19,19 +19,23 @@
     <h2>session: <span>n/a</span></h2>
     <p>This is the admin screen</p>
     <p id='message'></p>
-    <div>
+    <div class='controls' id='controlSettings'>
+        <button id='setMax'>Set max votes</button>
+        <input id='showMax' style='width: 40px;' type='number' value='10'>
+    </div>
+    <div class='controls' id='controlSession'>
         <button id='startSession'>Start Session</button>
         <button id='endSession'>End Session</button>
     </div>
-    <div>
+    <div class='controls' id='controlAssign'>
         <button id='assignTeams'>Assign Teams</button>
     </div>
-    <div>
+    <div class='controls' id='controlRounds'>
         <button class='startRound' id='r1'>Start Round 1</button>
         <button class='startRound' id='r2'>Start Round 2</button>
     </div>
     <br>
-    <div>
+    <div class='controls' id='controlDisplay'>
         <button id='listPlayers'>List players</button>
         <button id='showScores'>Show scores</button>
     </div>
@@ -48,11 +52,12 @@
         const socket = io();
         const PINGBTN = `pingbtn-`;
         const RESETBTN = `resetbtn-`;
+        const STORE_DISPLAY = 'currentDisplay';
         let clientData = {role: 'admin'};
         let storedGame = null;
         let allEnrolled = null;
         let env = null;
-
+        //
         const buttonSetup = () => {
             let b = document.getElementsByClassName('pingBtn');
             [...b].forEach((bu) => {
@@ -71,21 +76,15 @@
             });
         };
         //
-//        let ssb = document.getElementById('startSession');
-//        ssb.addEventListener('click', (evt) => {
-//            startNewSession();
-//        });
-
+        const buttonSetMax = $('#setMax');
         const buttonStartSesh = $('#startSession');
         const buttonEndSesh = $('#endSession');
         const buttonsStartRound = $('.startRound');
         const buttonAssignTeams = $('#assignTeams');
         const buttonShowScores = $('#showScores');
+        const buttonListPlayers = $('#listPlayers');
         //
-        let lpb = document.getElementById('listPlayers');
-        lpb.addEventListener('click', (evt) => {
-            listPlayers();
-        });
+        const inputMax = $(`#showMax`);
         //
         const enableButton = (b, boo) => {
 //            console.log(b);
@@ -97,10 +96,17 @@
             }
 
         };
+        const updateDisplay = (f) => {
+            localStorage.setItem(STORE_DISPLAY, f);
+        }
         const setSessionButtons = (start) => {
 //            console.log(`setup session buttons, has a session started? ${start ? 'yes' : 'no'}`);
             enableButton('endSession', start);
             enableButton('startSession', !start);
+        };
+        const setMaxVotes = () => {
+            console.log(inputMax.val());
+            socket.emit('setMaxVotes', inputMax.val())
         };
         const startNewSession = () => {
             setSessionButtons(true);
@@ -268,14 +274,77 @@
                     pn.stakeholder = pn.stakeholder > -1 ? Object.values(env.gamedata.teams)[pn.stakeholder].title : 'unassigned';
                 });
                 updatePlayersView(p);
+                updateDisplay('listPlayers');
             });
         };
         const getScoreObject = (o) => {
-            let oo = {hasPV: false, teams: []};
-            let t = JSON.parse(JSON.stringify(env.gamedata.mainTeams));
-//            console.log(t);
+            let oo = {
+                hasPV: false,
+                hasSt: false,
+                teams: []
+            };
 //            console.log(o);
-//            console.log(o.getCurrentScores());
+            let t = JSON.parse(JSON.stringify(env.gamedata.mainTeams));
+            if (o.round) {
+                if (o.round > 0) {
+                    let sc = o.scores[`round${o.round}`];
+                    let scPV = sc.pvVotes;
+                    let scSt = sc.stakeholderVotes;
+                    let summ = null;
+                    oo.hasPV = Boolean(scPV);
+                    oo.hasSt = Boolean(scSt);
+                    console.clear();
+                    t.forEach((v, id) => {
+                        let ot = {
+                            title: v.title,
+                            pv1: {l: '', m: 0},
+                            pv2: {l: '', m: 0},
+                            pvTotal: 0,
+                            stVote: 0,
+                            mult: 0
+                        };
+                        // PV votes
+                        if (scPV) {
+                            summ = scPV.summary;
+                            let ts = summ[`t-${id}`];
+                            if (ts.hasOwnProperty('v-5')) {
+                                // PV1
+                                ts['v-5'].l = ts['v-5'].a.toString();
+                                ot.pv1 = Object.assign(ot.pv1, ts['v-5']);
+                                ot.pvTotal += ot.pv1.m;
+                            }
+                            if (ts.hasOwnProperty('v-6')) {
+                                // PV2
+                                ts['v-6'].l = ts['v-6'].a.toString();
+                                ot.pv2 = Object.assign(ot.pv2, ts['v-6']);
+                                ot.pvTotal += ot.pv2.m;
+                            }
+
+                        }
+                        // Stakeholder votes
+                        if (scSt) {
+                            summ = scSt.summary;
+                            summ = Object.values(summ)[id];
+                            let tot = 0;
+                            Object.values(summ).forEach((v, id) => {
+                                tot += v.t;
+                            });
+                            ot.stVote = tot;
+                        }
+                        ot.mult = ot.pvTotal * ot.stVote;
+                        oo.teams.push(ot);
+                    });
+                }
+            }
+            return oo;
+        };
+        const getScoreObjectV1 = (o) => {
+            let oo = {
+                hasPV: false,
+                hasSt: false,
+                teams: []
+            };
+            let t = JSON.parse(JSON.stringify(env.gamedata.mainTeams));
             if (o.round) {
                 if (o.round > 0) {
                     let sc = o.scores[`round${o.round}`];
@@ -283,7 +352,6 @@
                     if (scPV) {
                         let summ = scPV.summary;
                         oo.hasPV = true;
-//                        console.log(scPV);
                         t.forEach((v, id) => {
                             let ot = {
                                 title: v.title,
@@ -300,19 +368,33 @@
                                 ot.pv2 = Object.assign(ot.pv2, ts['v-6']);
                             }
                             oo.teams.push(ot);
-    //                        console.log(id, summ[]);
+                        });
+                    }
+                    let scSt = sc.stakeholderVotes;
+                    if (scSt) {
+                        let summ = scSt.summary;
+                        oo.hasSt = true;
+                        Object.values(summ).forEach((v, id) => {
+                            let tot = 0;
+                            Object.values(v).forEach((t) => {
+                                console.log(` - ${t.t}`);
+                                tot += t.t;
+                            });
+//                            oo.teams[id][`stVote`] = tot;
                         });
                     }
                 }
             }
-//            console.log(oo);
             return oo;
         };
         const updateScores = (s) => {
-            if ($('#controlPanel').find('.scorePV').length > 0) {
+            console.log('HUP');
+            console.log($('#controlPanel').find('#scoreSummary'));
+            if ($('#controlPanel').find('#scoreSummary').length > 0) {
                 showScores();
             }
             return;
+            /*
             console.log('hup');
             console.log(s);
             console.log($('#controlPanel').find('.scorePV'));
@@ -322,20 +404,24 @@
                     renderTemplate('scores', 'controlPanel', o);
                 }
             }
+            */
         };
         const showScores = () => {
             socket.emit('getSession', (s) => {
                 if (s) {
                     let o = getScoreObject(s);
-                    if (o.hasPV) {
+                    console.log('theScoreObject');
+                    console.log(o);
+                    if (o.hasPV || o.hasSt) {
                         renderTemplate('scores', 'controlPanel', o);
                     } else {
-                        $('#controlPanel').html('no PV votes found');
+                        $('#controlPanel').html('no scores found');
                     }
                 } else {
                     $('#controlPanel').html('no session found');
                 }
             });
+            updateDisplay('showScores');
         };
         //
         // Methods that could potentially be made universal
@@ -420,7 +506,7 @@
         };
         const onServerShutdown = () => {
             console.log('SERVER SHUTTIING DOWN');
-            getGameToStore()
+            getGameToStore();
         };
         const onServerStartup = () => {
             console.log('SERVER STARTED');
@@ -439,18 +525,36 @@
 ;            })
         };
         //
+        const initDisplay = (s) => {
+            let sd = localStorage.getItem(STORE_DISPLAY);
+            if (sd) {
+                switch (sd) {
+                    case 'listPlayers':
+                        listPlayers();
+                        break;
+                    case 'showScores':
+                        showScores();
+                        break;
+                    default:
+                        console.log('no initial display function specified');
+                }
+            }
+        };
         const init = () => {
 //            console.log('init')
             setSessionButtons(false);
             enableButton(buttonEndSesh, false);
             enableButton(buttonsStartRound, false);
             enableButton(buttonAssignTeams, false);
+
         };
         //
+        buttonSetMax.on('click', setMaxVotes);
         buttonStartSesh.on('click', startNewSession);
         buttonEndSesh.on('click', adminTerminateSession);
         buttonsStartRound.on('click', startRound);
         buttonAssignTeams.on('click', assignTeams);
+        buttonListPlayers.on('click', listPlayers);
         buttonShowScores.on('click', showScores);
         //
 
@@ -483,6 +587,7 @@
             socket.emit('getPlayerPack', (p) => {
                 isDev = p.isDev;
                 env = Object.assign({}, p);
+                initDisplay();
             });
         });
         socket.on('onPlayerConnect', (msg) => {

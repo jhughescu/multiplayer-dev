@@ -1,5 +1,12 @@
-
-
+<div id='scoreSummary'>
+    <div>Score summary:</div>
+    <table><tbody>
+        <tr><th>Stakeholder</th><th>Player<br>resources</th><th>PV 1<br>mean</th><th>PV 2<br>mean</th><th>PV total</th><th>PR x PV</th></tr>
+        {{#each teams}}
+        <tr><td>{{title}}</td><td>{{stVote}}</td><td>{{pv1.m}}</td><td>{{pv2.m}}</td><td>{{pvTotal}}</td><td class='highlight'>{{mult}}</td></tr>
+        {{/each}}
+    </tbody></table>
+</div>
 {{#each teams}}
 <br>
 <div><b>{{title}}</b></div>

@@ -26,7 +26,8 @@
             "active": -1,
             "likes": true,
             "weight": 3,
-            "hasMax": false
+            "hasMax": false,
+            "hasLead": false
         },
         "t6": {
             "id": 6,
@@ -34,7 +35,8 @@
             "active": -1,
             "likes": true,
             "weight": 3,
-            "hasMax": false
+            "hasMax": false,
+            "hasLead": false
         }
     },
     "settings": {
@@ -45,7 +47,8 @@
         "votes": 10,
         "likes": false,
         "weight": 2,
-        "hasMax": true
+        "hasMax": true,
+        "hasLead": true
     },
     "prefixes": {
         "player": "player-"

@@ -275,6 +275,14 @@ const getSessionID = () => {
 const getSession = (cb) => {
     cb(session);
 };
+const setMaxVotes = (m) => {
+//    console.log(`setMax ${m}`)
+    io.emit('upateMaxVotes', m);
+    let ts = gamedata.teams;
+    for (var t in ts) {
+        t.votes = m;
+    }
+};
 const requestSession = (o) => {
 //    if the session ID passed matches the session ID for the app, return the passed player id for verification, otherwise return false:
     let ro = {
@@ -323,66 +331,125 @@ const terminateSession = () => {
     io.emit('terminateSession');
 };
 //
+
+const pvStakeholderScoreFunk = (o) => {
+    let sc = session.getCurrentScores();
+    if (!sc.hasOwnProperty('pvVotes')) {
+        sc.pvVotes = {
+            list: [],
+            summary: {}
+        };
+    }
+    sc.pvVotes.list.push(o);
+    let ob = Object.assign({}, sc.pvVotes);
+    Object.values(gamedata.teams).forEach((p) => {
+        if (p.hasMax) {
+            ob.summary[`t-${p.id}`] = {};
+        }
+    });
+    ob.list.forEach((v) => {
+        if (!ob.summary[`t-${v.targ}`].hasOwnProperty(`v-${v.team}`)) {
+            ob.summary[`t-${v.targ}`][`v-${v.team}`] = {a: [], t: 0, m: 0}
+        }
+        ob.summary[`t-${v.targ}`][`v-${v.team}`].a.push(v.v);
+    });
+    Object.values(ob.summary).forEach((a) => {
+        Object.values(a).forEach((s) => {
+            s.a.forEach((v) => {
+                s.t += v;
+            });
+            // round to 2 DP
+            s.m = Math.round((s.t / s.a.length) * 100) / 100;
+        });
+    });
+    updateLogFile('theob', ob);
+    updateLogFile('thesession', session);
+    // Store the scores in the scoring player object
+    let pl = getPlayerFromID(o.src);
+    if (!pl.hasOwnProperty('scores')) {
+        pl.scores = {};
+    }
+    let r = `r${session.getRound()}`;
+    if (!pl.scores.hasOwnProperty(r)) {
+        pl.scores[r] = [];
+    }
+    pl.scores[r].push({targ: o.targ, v: o.v});
+    // Update the vote total in the scoring player
+    pl.teamObj.votes -= Math.abs(o.v);
+    io.emit('scoreUpdate', o);
+    session.getCurrentScores().pvVotes = ob;
+    return ob;
+}
 const pvStakeholderScore = (o) => {
     let t = Object.values(gamedata.teams);
     if (session) {
         if (session.assigned) {
             if (t[o.targ].team) {
-                let sc = session.getCurrentScores();
-                if (!sc.hasOwnProperty('pvVotes')) {
-                    sc.pvVotes = {
-                        list: [],
-                        summary: {}
-                    };
-                }
-                sc.pvVotes.list.push(o);
-                let ob = Object.assign({}, sc.pvVotes);
-                Object.values(gamedata.teams).forEach((p) => {
-                    if (p.hasMax) {
-                        ob.summary[`t-${p.id}`] = {};
-                    }
-                });
-                ob.list.forEach((v) => {
-                    if (!ob.summary[`t-${v.targ}`].hasOwnProperty(`v-${v.team}`)) {
-                        ob.summary[`t-${v.targ}`][`v-${v.team}`] = {a: [], t: 0, m: 0}
-                    }
-                    ob.summary[`t-${v.targ}`][`v-${v.team}`].a.push(v.v);
-                });
-                Object.values(ob.summary).forEach((a) => {
-                    Object.values(a).forEach((s) => {
-                        s.a.forEach((v) => {
-                            s.t += v;
-                        });
-                        s.m = s.t / s.a.length;
-                        // round to 2 DP
-                        s.m = Math.round(s.m * 100) / 100;
-                    });
-                });
-                updateLogFile('theob', ob);
-                updateLogFile('thesession', session);
-                // Store the scores in the scoring player object
-                let pl = getPlayerFromID(o.src);
-                if (!pl.hasOwnProperty('scores')) {
-                    pl.scores = {};
-                }
-                let r = `r${session.getRound()}`;
-                if (!pl.scores.hasOwnProperty(r)) {
-                    pl.scores[r] = [];
-                }
-                pl.scores[r].push({targ: o.targ, v: o.v});
-                // Update the vote total in the scoring player
-                pl.teamObj.votes -= Math.abs(o.v);
-                if (pl.teamObj.votes <= 0) {
-//                    console.log(`handle a zero count for votes`);
-                    // No, we don't care abotu zero votes - votes are averaged over votes cast, hence 0 votes have no effect anyway.
-                }
-                updateLogFile('playersDetail', playersDetail);
-//                getSocketFromID(o.src).emit('scoreUpdate', o);
-                io.emit('scoreUpdate', o);
-                //
-                session.getCurrentScores().pvVotes = ob;
-                updateLogFile('session', session);
-                return ob;
+                // separate the conditional logic from the method, for clarity
+                return pvStakeholderScoreFunk(o);
+            }
+        }
+    }
+};
+
+const stStakeholderScoreFunk = (o) => {
+    let sc = session.getCurrentScores();
+    if (!sc.hasOwnProperty('stakeholderVotes')) {
+        sc.stakeholderVotes = {
+            list: [],
+            summary: {}
+        };
+    }
+    sc.stakeholderVotes.list.push(o);
+    let ob = Object.assign({}, sc.stakeholderVotes);
+    Object.values(gamedata.teams).forEach((p) => {
+        if (p.hasMax) {
+            ob.summary[`t-${p.id}`] = {};
+        }
+    });
+    ob.list.forEach((v) => {
+        if (!ob.summary[`t-${v.targ}`].hasOwnProperty(`v-${v.team}`)) {
+            ob.summary[`t-${v.targ}`][`v-${v.team}`] = {a: [], t: 0}
+        }
+        ob.summary[`t-${v.targ}`][`v-${v.team}`].a.push(v.v);
+    });
+    Object.values(ob.summary).forEach((a) => {
+        Object.values(a).forEach((s) => {
+            s.a.forEach((v) => {
+                s.t += v;
+            });
+        });
+    });
+    updateLogFile('thestob', ob);
+    updateLogFile('thesession', session);
+    // Store the scores in the scoring player object
+    let pl = getPlayerFromID(o.src);
+    if (!pl.hasOwnProperty('scores')) {
+        pl.scores = {};
+    }
+    let r = `r${session.getRound()}`;
+    if (!pl.scores.hasOwnProperty(r)) {
+        pl.scores[r] = [];
+    }
+    pl.scores[r].push({targ: o.targ, v: o.v});
+    // Update the vote total in the scoring player
+    pl.teamObj.votes -= Math.abs(o.v);
+    io.emit('scoreUpdate', o);
+    session.getCurrentScores().stakeholderVotes = ob;
+    return ob;
+}
+
+const stStakeholderScore = (o) => {
+//    console.log('first score!!');
+//    console.log(o);
+    let t = Object.values(gamedata.teams);
+    if (session) {
+        if (session.assigned) {
+            if (t[o.targ].team) {
+                // separate the conditional logic from the method, for clarity
+//                console.log('score!!');
+//                console.log(o);
+                return stStakeholderScoreFunk(o);
             }
         }
     }
@@ -883,12 +950,20 @@ const assignTeams = (cb) => {
             }
         });
     }
+    console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@');
     Object.entries(gamedata.teams).forEach(([k, v]) => {
-        v.team.forEach((p) => {
-            if (playersDetail[p]) {
-                playersDetail[p].stakeholder = v.id;
-                playersDetail[p].teamObj = Object.assign(copyObj(v), {});
-                let sock = playersMap.get(playersDetail[p].socketID);
+//        console.log(k);
+//        console.log(v.hasLead);
+        v.team.forEach((p, i) => {
+//            console.log(p, i);
+            let pl = playersDetail[p];
+            if (pl) {
+                if (v.hasLead) {
+                    pl.isLead = i === 0;
+                }
+                pl.stakeholder = v.id;
+                pl.teamObj = Object.assign(copyObj(v), {});
+                let sock = playersMap.get(pl.socketID);
                 sock.emit('onAssignTeams', k);
             } else {
                 console.log(`${p} not defined in playersDetail`);
@@ -899,6 +974,8 @@ const assignTeams = (cb) => {
     if (session){
         session.setAssigned(true);
     }
+    updateLogFile('gamedata', gamedata);
+    updateLogFile('playersDetail', playersDetail);
     cb(gamedata.teams);
 };
 const initApp = () => {
@@ -978,6 +1055,9 @@ io.on('connection', (socket) => {
     socket.on('adminTerminateSession', () => {
         terminateSession();
     });
+    socket.on('setMaxVotes', (m) => {
+        setMaxVotes(m);
+    });
     socket.on('getPlayerIDs', (cb) => {
         cb(playersBasic);
     });
@@ -1039,6 +1119,9 @@ io.on('connection', (socket) => {
     //
     socket.on('pvStakeholderScore', (o) => {
         pvStakeholderScore(o);
+    });
+    socket.on('stStakeholderScore', (o) => {
+        stStakeholderScore(o);
     });
     socket.on('startRound', (r) => {
         if (session) {

@@ -129,8 +129,15 @@
             } else {
                 p.stakeholder = Object.values(env.gamedata.teams)[s].title;
             }
-//            console.log(env.gamedata.teams);
-//            console.log('playa');
+            return p;
+        };
+        const finalisePlayer = (p) => {
+            // Make any final tweaks to the player object before it is sent to the templates for rendering
+            if (p.mainTeams && p.teamObj) {
+                p.mainTeams.forEach((t) => {
+                     t.isMyTeam = t.id === p.teamObj.id;
+                });
+            }
 //            console.log(p);
             return p;
         };
@@ -179,6 +186,7 @@
                 playerID: staticID
             };
             socket.emit('getPlayerPack', (o) => {
+//                player = Object.assign(env.gamedata, player);
                 player = prepPlayer(o.playersDetail[getMinID()]);
                 if (o.session.assigned) {
                     if (player.stakeholderID > -1) {
@@ -190,6 +198,7 @@
                     console.log(`no session.assigned`);
                 }
                 player = Object.assign(env.gamedata, player);
+                player = finalisePlayer(player);
                 renderTemplate('game', 'insertion', player);
             });
         };
@@ -198,6 +207,11 @@
             // Note: prior call to 'onStoredGameFound' causes a refresh, hence the flicker. Consider a way to remove this in future.
             window.location.reload();
 //            refreshView('onNewSession');
+        };
+        const updateMaxVotes = (m) => {
+            max = m;
+            $('#votes').html(m);
+            console.log(`set max to ${m}`);
         };
         const connectionWarning = (boo) => {
 //            console.log(`connectionWarning: ${boo}`);
@@ -353,6 +367,8 @@
         let vb = $('.buttonVote');
         let vv = $('.voteVal');
         let max = 10;
+        console.log('get the max')
+        console.log(player)
         let ls = [];
 //        let lid = `pv-${getID().split('?')[0]}-vote`;
         let lid = null;
@@ -365,21 +381,20 @@
                 inp.value = (-1 * max);
             }
         };
-        const submitVote = function (evt) {
-            const vi = $(this).parent().find('.voteVal');
+        const submitVote = function (src, toEmit) {
+            const vi = src.parent().find('.voteVal');
             let o = {
                 src: player.id,
                 team: player.stakeholderID,
                 targ: parseInt(vi.attr('id').split('_')[1]),
                 v: parseInt(vi.val())
             };
-    //        console.log(o);
+//            console.log(o);
             ls[o.targ] = o.v;
-//            console.log(ls);
             localStorage.setItem(lid, ls);
-            $(this).attr('disabled', true);
+            src.attr('disabled', true);
             vi.attr('disabled', true);
-            socket.emit('pvStakeholderScore', o);
+            socket.emit(toEmit, o);
         };
         vv = $('.voteVal');
         const getRemain = () => {
@@ -402,6 +417,7 @@
                     s = s.split(',');
                     max = 10;
                     s.forEach((v, i) => {
+                        console.log(i, v)
                         if (!isNaN(parseInt(v))) {
                             max -= parseInt(v);
                             ls[i] = v;
@@ -419,14 +435,13 @@
             console.log('session update calls viewUpdate');
         };
         const initpv = () => {
-
             lid = `pv-${getID().split('?')[0]}-vote`;
             vb = $('.buttonVote');
             vv = $('.voteVal');
-            vb.on('click', submitVote);
+            vb.on('click', function () {
+                submitVote($(this), 'pvStakeholderScore');
+            });
             viewUpdate();
-
-
             scoreUpdate(getMinID());
         };
         const renderVotes = (p) => {
@@ -445,9 +460,6 @@
             }
         };
         const scoreUpdate = (o) => {
-//            console.log(`scoreUpdate: ${o.src}`);
-//            console.log(`scoreUpdate: ${getMinID()}`);
-
             if (o.src === getMinID()) {
 //                console.log(`OK, we can go`);
                 socket.emit('getPlayer', o.src, (p) => {
@@ -460,21 +472,32 @@
             vv.prop('disabled', !boo);
         };
         $('.buttonVote').on('click', submitVote);
-        socket.on('scoreUpdate', (o) => {
-            scoreUpdate(o);
-//            scoreUpdate(o.src);
-//            socket.emit('getPlayer', o.src, (p) => {
-//                renderVotes(p)
-//            });
-        });
 
         const setupPV = () => {
-
             initpv();
-//            enableScorePV(false);
         };
-
+        socket.on('scoreUpdate', (o) => {
+            scoreUpdate(o);
+        });
         // End Public Voices
+
+        // Stakeholder
+        const initst = () => {
+            console.log('get the max')
+            console.log(player)
+            lid = `st-${getID().split('?')[0]}-vote`;
+            vb = $('.buttonVote');
+            vv = $('.voteVal');
+            vb.on('click', function () {
+                submitVote($(this), 'stStakeholderScore');
+            });
+            viewUpdate();
+            scoreUpdate(getMinID());
+        };
+        const setupStakeholder = () => {
+            initst();
+        };
+        // End stakeholder
 
         // End type-specific code
 
@@ -513,6 +536,10 @@
             $('#team').find('span').html(env.gamedata.teams[id].title);
 //            debugger;
         });
+        socket.on('upateMaxVotes', (m) => {
+            console.log('i heard the emission')
+            updateMaxVotes(m)
+        })
         window.showLog = getLogs;
         window.getRemain = getRemain;
         //
